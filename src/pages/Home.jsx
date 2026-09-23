@@ -8,19 +8,21 @@ export default function Home() {
   const [stats, setStats] = useState(null)
 
   useEffect(() => {
-    supabase
-      .from('attempts')
-      .select('is_correct,question_id')
-      .then(({ data }) => {
-        const rows = data || []
-        const answered = new Set(rows.map((r) => r.question_id)).size
-        const correct = rows.filter((r) => r.is_correct).length
-        setStats({
-          total: rows.length,
-          answered,
-          accuracy: rows.length ? Math.round((correct / rows.length) * 100) : null,
-        })
+    Promise.all([
+      supabase.from('attempts').select('is_correct,question_id'),
+      supabase.from('part_attempts').select('is_correct,part_id'),
+    ]).then(([a, p]) => {
+      const mcq = a.data || []
+      const parts = p.data || []
+      const total = mcq.length + parts.length
+      const correct = mcq.filter((r) => r.is_correct).length + parts.filter((r) => r.is_correct).length
+      const unique = new Set(mcq.map((r) => r.question_id)).size + new Set(parts.map((r) => r.part_id)).size
+      setStats({
+        total,
+        answered: unique,
+        accuracy: total ? Math.round((correct / total) * 100) : null,
       })
+    })
   }, [])
 
   const first = (profile?.full_name || user?.email || '').split(/[ @]/)[0]
@@ -31,8 +33,8 @@ export default function Home() {
       <p className="mt-1 text-slate-500">Practise questions by module and week, with instant marking and explanations.</p>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-3">
-        <Stat label="Questions answered" value={stats ? stats.total : '–'} />
-        <Stat label="Unique questions" value={stats ? stats.answered : '–'} />
+        <Stat label="Answers submitted" value={stats ? stats.total : '–'} />
+        <Stat label="Unique items answered" value={stats ? stats.answered : '–'} />
         <Stat label="Accuracy" value={stats?.accuracy != null ? `${stats.accuracy}%` : '–'} />
       </div>
 
