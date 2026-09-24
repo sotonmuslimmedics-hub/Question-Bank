@@ -2,10 +2,12 @@ import { useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
+import { SITE_NAME, SITE_TAGLINE, SHORT_NAME } from '../config'
+import { inputCls, btnDark, Notice } from '../components/ui'
 
 export default function Login() {
-  const { session } = useAuth()
-  const [mode, setMode] = useState('signin')
+  const { session, recovering } = useAuth()
+  const [mode, setMode] = useState('signin') // signin | signup | forgot
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
@@ -13,7 +15,14 @@ export default function Login() {
   const [info, setInfo] = useState('')
   const [busy, setBusy] = useState(false)
 
+  if (recovering) return <Navigate to="/reset-password" replace />
   if (session) return <Navigate to="/" replace />
+
+  const switchMode = (m) => {
+    setMode(m)
+    setError('')
+    setInfo('')
+  }
 
   async function submit(e) {
     e.preventDefault()
@@ -24,14 +33,14 @@ export default function Login() {
       if (mode === 'signin') {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw error
-      } else {
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: { data: { full_name: fullName } },
-        })
+      } else if (mode === 'signup') {
+        const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { full_name: fullName } } })
         if (error) throw error
         if (!data.session) setInfo('Check your email to confirm your account, then sign in.')
+      } else {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/reset-password` })
+        if (error) throw error
+        setInfo('If that email has an account, a reset link is on its way. Check junk mail too.')
       }
     } catch (err) {
       setError(err.message || 'Something went wrong')
@@ -40,34 +49,51 @@ export default function Login() {
     }
   }
 
-  const input = 'w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100'
+  const heading = { signin: 'Welcome back', signup: 'Create your account', forgot: 'Reset your password' }[mode]
 
   return (
-    <div className="grid min-h-screen place-items-center px-4">
-      <form onSubmit={submit} className="w-full max-w-sm space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="text-center">
-          <div className="mx-auto mb-3 grid h-11 w-11 place-items-center rounded-xl bg-brand-600 text-xl font-bold text-white">+</div>
-          <h1 className="text-xl font-bold">Question Bank</h1>
-          <p className="text-sm text-slate-500">{mode === 'signin' ? 'Sign in to practise' : 'Create your account'}</p>
+    <div className="grid min-h-screen place-items-center px-4 py-8">
+      <div className="w-full max-w-sm">
+        <div className="mb-6 text-center">
+          <div className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-2xl bg-stone-900 text-sm font-bold text-white">{SHORT_NAME}</div>
+          <h1 className="text-2xl font-bold tracking-tight">{SITE_NAME}</h1>
+          <p className="mt-1 text-sm text-stone-500">{SITE_TAGLINE}</p>
         </div>
-        {mode === 'signup' && (
-          <input className={input} placeholder="Full name" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
-        )}
-        <input className={input} type="email" placeholder="University email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-        <input className={input} type="password" placeholder="Password" minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} required />
-        {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
-        {info && <p className="rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-700">{info}</p>}
-        <button disabled={busy} className="w-full rounded-lg bg-brand-600 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60">
-          {busy ? 'Please wait…' : mode === 'signin' ? 'Sign in' : 'Sign up'}
-        </button>
-        <button
-          type="button"
-          onClick={() => { setMode(mode === 'signin' ? 'signup' : 'signin'); setError(''); setInfo('') }}
-          className="w-full text-center text-sm text-slate-500 hover:text-slate-800"
-        >
-          {mode === 'signin' ? 'No account? Sign up' : 'Have an account? Sign in'}
-        </button>
-      </form>
+        <form onSubmit={submit} className="space-y-3 rounded-3xl border border-stone-200 bg-white p-6 shadow-sm">
+          <h2 className="text-lg font-semibold">{heading}</h2>
+          <Notice tone="error">{error}</Notice>
+          <Notice tone="ok">{info}</Notice>
+          {mode === 'signup' && (
+            <input className={inputCls} placeholder="Full name" autoComplete="name" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
+          )}
+          <input className={inputCls} type="email" placeholder="University email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          {mode !== 'forgot' && (
+            <input
+              className={inputCls}
+              type="password"
+              placeholder="Password"
+              minLength={8}
+              autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          )}
+          <button disabled={busy} className={`${btnDark} w-full`}>
+            {busy ? 'Please wait…' : mode === 'signin' ? 'Sign in' : mode === 'signup' ? 'Sign up' : 'Send reset link'}
+          </button>
+          <div className="flex justify-between text-sm text-stone-500">
+            {mode === 'signin' ? (
+              <>
+                <button type="button" onClick={() => switchMode('forgot')} className="underline">Forgot password?</button>
+                <button type="button" onClick={() => switchMode('signup')} className="underline">Create account</button>
+              </>
+            ) : (
+              <button type="button" onClick={() => switchMode('signin')} className="underline">Back to sign in</button>
+            )}
+          </div>
+        </form>
+      </div>
     </div>
   )
 }

@@ -3,8 +3,11 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { imageUrl } from '../lib/images'
 import { checkAnswer } from '../lib/answers'
+import { buildTree, pathOf, fetchAll } from '../lib/sections'
+import { Pill, btnDark, btnPrimary, btnGhost, inputCls } from '../components/ui'
 
 const LETTERS = 'ABCDEFGH'
+const DIFF = { 1: 'Easier', 2: 'Medium', 3: 'Harder' }
 
 function shuffle(arr) {
   const a = [...arr]
@@ -17,49 +20,58 @@ function shuffle(arr) {
 
 export default function Quiz() {
   const [params] = useSearchParams()
-  const weekIds = useMemo(() => (params.get('weeks') || '').split(',').filter(Boolean), [params])
+  const sectionIds = useMemo(() => (params.get('s') || '').split(',').filter(Boolean), [params])
+  const limit = Number(params.get('n')) || 0
   const [questions, setQuestions] = useState([])
+  const [paths, setPaths] = useState(new Map())
   const [index, setIndex] = useState(0)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [score, setScore] = useState({ done: 0, correct: 0 })
   const [error, setError] = useState('')
 
-  // multiple-choice state
   const [chosen, setChosen] = useState(null)
-  // photo-question state
   const [typed, setTyped] = useState(['', ''])
   const [checked, setChecked] = useState(false)
-  const [marks, setMarks] = useState([false, false]) // final correct/incorrect per part (student can override)
+  const [marks, setMarks] = useState([false, false])
   const [autoMarks, setAutoMarks] = useState([false, false])
 
   useEffect(() => {
-    if (weekIds.length === 0) {
-      setLoading(false)
-      return
-    }
-    supabase
-      .from('questions')
-      .select('id,stem,options,correct_option,explanation,week_id,question_type,image_path,question_parts(id,part_number,prompt,accepted_answers)')
-      .in('week_id', weekIds)
-      .eq('is_published', true)
-      .then(({ data, error }) => {
-        if (error) setError(error.message)
-        const prepared = (data || []).map((q) => ({
+    if (sectionIds.length === 0) return setLoading(false)
+    ;(async () => {
+      try {
+        const [data, secs] = await Promise.all([
+          fetchAll(() =>
+            supabase
+              .from('questions')
+              .select('id,stem,options,correct_option,explanation,section_id,question_type,image_path,author_name,difficulty,question_parts(id,part_number,prompt,accepted_answers)')
+              .in('section_id', sectionIds)
+              .eq('is_published', true)
+              .order('id'),
+          ),
+          fetchAll(() => supabase.from('sections').select('id,parent_id,name,sort_order').order('id')),
+        ])
+        const prepared = data.map((q) => ({
           ...q,
           question_parts: [...(q.question_parts || [])].sort((a, b) => a.part_number - b.part_number),
         }))
-        setQuestions(shuffle(prepared))
-        setLoading(false)
-      })
-  }, [weekIds])
+        let list = shuffle(prepared)
+        if (limit > 0) list = list.slice(0, limit)
+        setQuestions(list)
+        const { nodes } = buildTree(secs)
+        setPaths(new Map(list.map((q) => [q.id, pathOf(nodes, q.section_id)])))
+      } catch (e) {
+        setError(e.message)
+      }
+      setLoading(false)
+    })()
+  }, [sectionIds, limit])
 
   const q = questions[index]
   const isStation = q?.question_type === 'station'
   const finished = !loading && questions.length > 0 && index >= questions.length
   const answered = isStation ? checked : chosen !== null
 
-  // warm the browser cache with the next photo so it appears instantly
   useEffect(() => {
     const nextQ = questions[index + 1]
     if (nextQ?.image_path) new Image().src = imageUrl(nextQ.image_path)
@@ -69,8 +81,8 @@ export default function Quiz() {
     if (answered || saving) return
     setChosen(i)
     setSaving(true)
-    const isCorrect = i === q.correct_option
-    setScore((s) => ({ done: s.done + 1, correct: s.correct + (isCorrect ? 1 : 0) }))
+    const ok = i === q.correct_option
+    setScore((s) => ({ done: s.done + 1, correct: s.correct + (ok ? 1 : 0) }))
     const { error } = await supabase.from('attempts').insert({ question_id: q.id, selected_option: i })
     if (error) setError('Your answer could not be saved: ' + error.message)
     setSaving(false)
@@ -81,10 +93,6 @@ export default function Quiz() {
     setAutoMarks(auto)
     setMarks(auto)
     setChecked(true)
-  }
-
-  function toggleMark(i) {
-    setMarks((m) => m.map((v, j) => (j === i ? !v : v)))
   }
 
   async function next() {
@@ -104,22 +112,22 @@ export default function Quiz() {
     setIndex((n) => n + 1)
   }
 
-  if (loading) return <p className="text-slate-500">Loading questions…</p>
-  if (weekIds.length === 0 || questions.length === 0)
+  if (loading) return <p className="text-stone-500">Loading questions…</p>
+  if (sectionIds.length === 0 || questions.length === 0)
     return (
       <div>
-        <p className="text-slate-600">{error || 'No questions found for that selection.'}</p>
-        <Link to="/banks" className="mt-3 inline-block text-sm font-medium text-brand-700">← Back to question banks</Link>
+        <p className="text-stone-600">{error || 'No questions found for that selection.'}</p>
+        <Link to="/practice" className="mt-3 inline-block text-sm font-medium text-brand-700">← Back to Practise</Link>
       </div>
     )
 
   if (finished)
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center">
+      <div className="mx-auto max-w-md rounded-3xl border border-stone-200 bg-white p-8 text-center">
         <h1 className="text-2xl font-bold">Session complete</h1>
-        <p className="mt-2 text-4xl font-bold text-brand-700">{score.correct} / {score.done}</p>
-        <p className="text-slate-500">{score.done ? Math.round((score.correct / score.done) * 100) : 0}% correct</p>
-        <Link to="/banks" className="mt-6 inline-block rounded-lg bg-slate-900 px-5 py-2 text-sm font-semibold text-white">Back to question banks</Link>
+        <p className="mt-2 text-5xl font-bold text-brand-700">{score.correct}<span className="text-2xl text-stone-400"> / {score.done}</span></p>
+        <p className="mt-1 text-stone-500">{score.done ? Math.round((score.correct / score.done) * 100) : 0}% correct</p>
+        <Link to="/practice" className={`${btnDark} mt-6`}>Back to Practise</Link>
       </div>
     )
 
@@ -127,45 +135,45 @@ export default function Quiz() {
   const allRight = isStation && marks.every(Boolean)
 
   return (
-    <div>
-      <div className="flex items-end justify-between">
-        <div>
-          <Link to="/banks" className="text-sm text-slate-400 hover:text-slate-600">← Question banks</Link>
-          <h1 className="text-xl font-bold">Custom session · {weekIds.length} week{weekIds.length > 1 ? 's' : ''}</h1>
-        </div>
-        <div className="text-right text-sm font-semibold text-slate-500">Question {index + 1} of {questions.length}</div>
+    <div className="mx-auto max-w-2xl pb-24">
+      <div className="flex items-center justify-between text-sm">
+        <Link to="/practice" className="text-stone-400 hover:text-stone-600">← Exit</Link>
+        <span className="font-semibold text-stone-500">{index + 1} / {questions.length}</span>
       </div>
-      <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-200">
+      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-stone-200">
         <div className="h-full bg-brand-500 transition-all" style={{ width: `${pct}%` }} />
       </div>
 
-      <div className="mt-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">{q.stem}</div>
+      <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-stone-500">
+        <span className="truncate">{paths.get(q.id)}</span>
+        {q.difficulty && <Pill tone="amber">{DIFF[q.difficulty] || q.difficulty}</Pill>}
+      </div>
+
+      <div className="mt-2 rounded-2xl border border-stone-200 bg-white p-5 text-[15px] leading-relaxed shadow-sm">{q.stem}</div>
 
       {isStation && q.image_path && (
-        <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white p-2">
-          <img key={q.id} src={imageUrl(q.image_path)} alt="Question image" className="mx-auto max-h-[28rem] w-auto max-w-full rounded-lg" />
+        <div className="mt-3 overflow-hidden rounded-2xl border border-stone-200 bg-white p-2">
+          <img key={q.id} src={imageUrl(q.image_path)} alt="Question" className="mx-auto max-h-[28rem] w-auto max-w-full rounded-xl" />
         </div>
       )}
 
       {!isStation && (
-        <div className="mt-4 space-y-2">
+        <div className="mt-3 space-y-2">
           {q.options.map((opt, i) => {
-            let style = 'border-slate-200 bg-white hover:border-slate-300'
-            let badge = 'bg-slate-100 text-slate-500'
+            let style = 'border-stone-200 bg-white active:bg-stone-50'
+            let badge = 'bg-stone-100 text-stone-500'
             if (answered) {
               if (i === q.correct_option) {
-                style = 'border-green-500 bg-green-50'
-                badge = 'bg-green-600 text-white'
+                style = 'border-emerald-500 bg-emerald-50'
+                badge = 'bg-emerald-600 text-white'
               } else if (i === chosen) {
                 style = 'border-red-400 bg-red-50'
                 badge = 'bg-red-500 text-white'
-              } else {
-                style = 'border-slate-200 bg-white opacity-60'
-              }
+              } else style = 'border-stone-200 bg-white opacity-60'
             }
             return (
-              <button key={i} disabled={answered} onClick={() => choose(i)} className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left text-sm ${style}`}>
-                <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-xs font-bold ${badge}`}>{LETTERS[i]}</span>
+              <button key={i} disabled={answered} onClick={() => choose(i)} className={`flex w-full items-center gap-3 rounded-2xl border px-4 py-3.5 text-left text-sm ${style}`}>
+                <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs font-bold ${badge}`}>{LETTERS[i]}</span>
                 <span>{opt}</span>
               </button>
             )
@@ -174,16 +182,14 @@ export default function Quiz() {
       )}
 
       {isStation && (
-        <div className="mt-4 space-y-3">
+        <div className="mt-3 space-y-3">
           {q.question_parts.map((p, i) => {
             const good = marks[i]
             return (
-              <div key={p.id} className={`rounded-xl border bg-white p-4 ${checked ? (good ? 'border-green-500 bg-green-50' : 'border-red-400 bg-red-50') : 'border-slate-200'}`}>
-                <label className="block text-sm font-semibold">
-                  <span className="mr-2 text-slate-400">{i + 1}.</span>{p.prompt}
-                </label>
+              <div key={p.id} className={`rounded-2xl border p-4 ${checked ? (good ? 'border-emerald-500 bg-emerald-50' : 'border-red-400 bg-red-50') : 'border-stone-200 bg-white'}`}>
+                <label className="block text-sm font-semibold"><span className="mr-2 text-stone-400">{i + 1}.</span>{p.prompt}</label>
                 <input
-                  className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:outline-none disabled:bg-slate-50"
+                  className={`${inputCls} mt-2`}
                   placeholder="Type your answer"
                   value={typed[i]}
                   disabled={checked}
@@ -194,18 +200,16 @@ export default function Quiz() {
                 />
                 {checked && (
                   <div className="mt-3 text-sm">
-                    <div className={`font-semibold ${good ? 'text-green-700' : 'text-red-700'}`}>
+                    <div className={`font-semibold ${good ? 'text-emerald-700' : 'text-red-700'}`}>
                       {good ? 'Correct' : 'Incorrect'}
-                      {autoMarks[i] !== good && <span className="ml-2 text-xs font-normal text-slate-500">(you marked this yourself)</span>}
+                      {autoMarks[i] !== good && <span className="ml-2 text-xs font-normal text-stone-500">(marked by you)</span>}
                     </div>
-                    <div className="mt-1 text-slate-700">
-                      <span className="text-xs font-bold uppercase tracking-wide text-slate-400">Model answer </span>
+                    <div className="mt-1 text-stone-700">
+                      <span className="text-xs font-bold uppercase tracking-wide text-stone-400">Model answer </span>
                       {p.accepted_answers[0]}
-                      {p.accepted_answers.length > 1 && (
-                        <span className="text-slate-500"> (also accepted: {p.accepted_answers.slice(1).join('; ')})</span>
-                      )}
+                      {p.accepted_answers.length > 1 && <span className="text-stone-500"> (also accepted: {p.accepted_answers.slice(1).join('; ')})</span>}
                     </div>
-                    <button type="button" onClick={() => toggleMark(i)} className="mt-2 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium hover:bg-slate-50">
+                    <button type="button" onClick={() => setMarks((m) => m.map((v, j) => (j === i ? !v : v)))} className={`${btnGhost} mt-2`}>
                       {good ? 'Actually I got this wrong' : 'My answer was right (different wording)'}
                     </button>
                   </div>
@@ -217,32 +221,33 @@ export default function Quiz() {
       )}
 
       {!isStation && answered && (
-        <div className={`mt-6 rounded-xl border p-5 ${chosen === q.correct_option ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}>
-          <div className={`font-bold ${chosen === q.correct_option ? 'text-green-700' : 'text-red-700'}`}>
-            {chosen === q.correct_option ? 'Correct!' : `Incorrect — the answer is ${LETTERS[q.correct_option]}.`}
+        <div className={`mt-4 rounded-2xl border p-4 ${chosen === q.correct_option ? 'border-emerald-200 bg-emerald-50' : 'border-red-200 bg-red-50'}`}>
+          <div className={`font-bold ${chosen === q.correct_option ? 'text-emerald-700' : 'text-red-700'}`}>
+            {chosen === q.correct_option ? 'Correct' : `Not quite. The answer is ${LETTERS[q.correct_option]}.`}
           </div>
           {q.explanation && <Explanation text={q.explanation} />}
         </div>
       )}
-
       {isStation && checked && (
-        <div className={`mt-6 rounded-xl border p-5 ${allRight ? 'border-green-200 bg-green-50' : 'border-slate-200 bg-white'}`}>
+        <div className={`mt-4 rounded-2xl border p-4 ${allRight ? 'border-emerald-200 bg-emerald-50' : 'border-stone-200 bg-white'}`}>
           <div className="font-bold">{marks.filter(Boolean).length} of {marks.length} correct</div>
           {q.explanation && <Explanation text={q.explanation} />}
         </div>
       )}
 
+      {answered && q.author_name && <p className="mt-2 text-right text-xs text-stone-400">Question by {q.author_name}</p>}
       {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
 
-      <div className="mt-6 flex justify-end gap-3">
-        {isStation && !checked && (
-          <button onClick={checkStation} className="rounded-lg bg-brand-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-brand-700">Check answers</button>
-        )}
-        {(!isStation || checked) && (
-          <button disabled={!answered || saving} onClick={next} className="rounded-lg bg-slate-900 px-6 py-2.5 text-sm font-semibold text-white disabled:bg-slate-200 disabled:text-slate-400">
-            {index + 1 === questions.length ? 'Finish' : 'Next question →'}
-          </button>
-        )}
+      <div className="safe-bottom fixed inset-x-0 bottom-[3.9rem] z-20 border-t border-stone-200 bg-white/95 px-4 py-3 sm:bottom-0">
+        <div className="mx-auto flex max-w-2xl justify-end">
+          {isStation && !checked ? (
+            <button onClick={checkStation} className={`${btnPrimary} w-full sm:w-auto`}>Check answers</button>
+          ) : (
+            <button disabled={!answered || saving} onClick={next} className={`${btnDark} w-full sm:w-auto`}>
+              {index + 1 === questions.length ? 'Finish' : 'Next →'}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -250,8 +255,8 @@ export default function Quiz() {
 
 function Explanation({ text }) {
   return (
-    <div className="mt-3 rounded-lg bg-white p-4 text-sm">
-      <div className="mb-1 text-xs font-bold uppercase tracking-wide text-slate-400">Explanation</div>
+    <div className="mt-3 rounded-xl bg-white p-3 text-sm leading-relaxed">
+      <div className="mb-1 text-xs font-bold uppercase tracking-wide text-stone-400">Why</div>
       {text}
     </div>
   )
