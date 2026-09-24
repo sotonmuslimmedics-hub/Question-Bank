@@ -9,12 +9,13 @@ function useNav() {
   const items = [
     { to: '/', label: 'Home', icon: '⌂', end: true, primary: true },
     { to: '/practice', label: 'Practise', icon: '✎', primary: true },
+    { to: '/tracker', label: 'Topics', icon: '✓', primary: true },
     { to: '/announcements', label: 'News', icon: '✉', primary: true },
   ]
   if (isTeacher) {
     items.push({ to: '/teach', label: 'Teach', icon: '▤', primary: true, group: 'Teaching' })
     items.push({ to: '/portfolio', label: 'Portfolio', icon: '☰', group: 'Teaching' })
-    items.push({ to: '/tracker', label: 'Topic tracker', icon: '✓', group: 'Teaching' })
+    items.push({ to: '/coverage', label: 'Content coverage', icon: '☑', group: 'Teaching' })
   }
   if (isLead) items.push({ to: '/manage/questions', label: 'Questions', icon: '?', group: 'Manage' })
   if (isAdmin) {

@@ -10,6 +10,7 @@ import Announcements from './pages/Announcements'
 import Teach from './pages/Teach'
 import Portfolio from './pages/Portfolio'
 import Tracker from './pages/Tracker'
+import Coverage from './pages/admin/Coverage'
 import ManageQuestions from './pages/admin/ManageQuestions'
 import Structure from './pages/admin/Structure'
 import People from './pages/admin/People'
@@ -34,9 +35,10 @@ export default function App() {
         <Route path="practice" element={<Practice />} />
         <Route path="quiz" element={<Quiz />} />
         <Route path="announcements" element={<Announcements />} />
+        <Route path="tracker" element={<Tracker />} />
         <Route path="teach" element={<Gate min="teacher"><Teach /></Gate>} />
         <Route path="portfolio" element={<Gate min="teacher"><Portfolio /></Gate>} />
-        <Route path="tracker" element={<Gate min="teacher"><Tracker /></Gate>} />
+        <Route path="coverage" element={<Gate min="teacher"><Coverage /></Gate>} />
         <Route path="manage/questions" element={<Gate min="lead"><ManageQuestions /></Gate>} />
         <Route path="manage/structure" element={<Gate min="admin"><Structure /></Gate>} />
         <Route path="manage/people" element={<Gate min="admin"><People /></Gate>} />
