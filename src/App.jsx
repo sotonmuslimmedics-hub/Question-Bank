@@ -11,6 +11,7 @@ import Teach from './pages/Teach'
 import Portfolio from './pages/Portfolio'
 import Tracker from './pages/Tracker'
 import ManageQuestions from './pages/admin/ManageQuestions'
+import Teaching from './pages/admin/Teaching'
 import Structure from './pages/admin/Structure'
 import People from './pages/admin/People'
 import Tools from './pages/admin/Tools'
@@ -38,6 +39,7 @@ export default function App() {
         <Route path="teach" element={<Gate min="teacher"><Teach /></Gate>} />
         <Route path="portfolio" element={<Gate min="teacher"><Portfolio /></Gate>} />
         <Route path="manage/questions" element={<Gate min="lead"><ManageQuestions /></Gate>} />
+        <Route path="manage/teaching" element={<Gate min="lead"><Teaching /></Gate>} />
         <Route path="manage/structure" element={<Gate min="admin"><Structure /></Gate>} />
         <Route path="manage/people" element={<Gate min="admin"><People /></Gate>} />
         <Route path="manage/tools" element={<Gate min="admin"><Tools /></Gate>} />

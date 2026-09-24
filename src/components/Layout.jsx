@@ -16,7 +16,10 @@ function useNav() {
     items.push({ to: '/teach', label: 'Teach', icon: '▤', primary: true, group: 'Teaching' })
     items.push({ to: '/portfolio', label: 'Portfolio', icon: '☰', group: 'Teaching' })
   }
-  if (isLead) items.push({ to: '/manage/questions', label: 'Questions', icon: '?', group: 'Manage' })
+  if (isLead) {
+    items.push({ to: '/manage/questions', label: 'Questions', icon: '?', group: 'Manage' })
+    items.push({ to: '/manage/teaching', label: 'Teaching sessions', icon: '☑', group: 'Manage' })
+  }
   if (isAdmin) {
     items.push({ to: '/manage/structure', label: 'Structure', icon: '⌥', group: 'Manage' })
     items.push({ to: '/manage/people', label: 'People', icon: '☺', group: 'Manage' })
