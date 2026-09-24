@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
+import { useAnnouncementReads } from '../lib/announcementReads'
 import { PageHeader, Notice, Empty, Pill, Modal, inputCls, btnDark, btnGhost, btnDanger, card } from '../components/ui'
 
 export function fmtDate(d) {
@@ -9,9 +10,14 @@ export function fmtDate(d) {
 
 export default function Announcements() {
   const { isLead, user } = useAuth()
+  const { lastSeenAt, markSeen } = useAnnouncementReads() || {}
   const [rows, setRows] = useState(null)
   const [error, setError] = useState('')
   const [edit, setEdit] = useState(null) // {id?, title, body, pinned}
+  // Snapshot the "last seen" cutoff the moment we have it, so marking things seen
+  // (which resets it to now) doesn't make the highlight disappear mid-visit.
+  const seenAtRef = useRef(null)
+  if (seenAtRef.current === null && lastSeenAt) seenAtRef.current = lastSeenAt
 
   async function load() {
     const { data, error } = await supabase.from('announcements').select('*').order('pinned', { ascending: false }).order('created_at', { ascending: false })
@@ -19,6 +25,11 @@ export default function Announcements() {
     setRows(data || [])
   }
   useEffect(() => { load() }, [])
+
+  // Once the page has rendered with the snapshot in hand, mark everything as seen.
+  useEffect(() => {
+    if (rows && lastSeenAt !== null && markSeen) markSeen()
+  }, [rows, lastSeenAt, markSeen])
 
   async function save(e) {
     e.preventDefault()
@@ -46,10 +57,15 @@ export default function Announcements() {
       <Notice tone="error" onClose={() => setError('')}>{error}</Notice>
       {rows && rows.length === 0 && <Empty>No announcements yet.</Empty>}
       <div className="space-y-3">
-        {(rows || []).map((a) => (
-          <article key={a.id} className={card}>
+        {(rows || []).map((a) => {
+          const isUnread = seenAtRef.current && new Date(a.created_at) > new Date(seenAtRef.current)
+          return (
+          <article key={a.id} className={`${card} ${isUnread ? 'border-brand-300 bg-brand-50/50 ring-1 ring-brand-200' : ''}`}>
             <div className="flex items-start justify-between gap-3">
-              <h2 className="font-semibold">{a.title}</h2>
+              <h2 className="flex items-center gap-2 font-semibold">
+                {a.title}
+                {isUnread && <Pill tone="brand">New</Pill>}
+              </h2>
               <div className="flex shrink-0 items-center gap-2">
                 {a.pinned && <Pill tone="brand">Pinned</Pill>}
                 <span className="text-xs text-stone-400">{fmtDate(a.created_at)}</span>
@@ -63,7 +79,8 @@ export default function Announcements() {
               </div>
             )}
           </article>
-        ))}
+          )
+        })}
       </div>
 
       {edit && (

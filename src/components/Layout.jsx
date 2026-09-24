@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { NavLink, Outlet, Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
+import { useAnnouncementReads } from '../lib/announcementReads'
 import { SITE_NAME, SHORT_NAME } from '../config'
 
 // One list drives both the desktop top bar and the phone tab bar.
@@ -34,6 +35,7 @@ const desktopLink = ({ isActive }) =>
 export default function Layout() {
   const { profile, user, signOut, role } = useAuth()
   const items = useNav()
+  const { unreadCount } = useAnnouncementReads() || {}
   const [more, setMore] = useState(false)
   const loc = useLocation()
   const tabs = items.filter((i) => i.primary)
@@ -52,7 +54,14 @@ export default function Layout() {
           <nav className="ml-2 hidden flex-1 flex-wrap gap-1 sm:flex">
             {items.map((i) => (
               <NavLink key={i.to} to={i.to} end={i.end} className={desktopLink}>
-                {i.label}
+                <span className="relative inline-flex items-center">
+                  {i.label}
+                  {i.to === '/announcements' && !!unreadCount && (
+                    <span className="ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-600 px-1 text-[10px] font-semibold text-white">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+                </span>
               </NavLink>
             ))}
           </nav>
@@ -84,7 +93,12 @@ export default function Layout() {
                   `flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium ${isActive ? 'text-brand-600' : 'text-stone-500'}`
                 }
               >
-                <span className="text-lg leading-none">{i.icon}</span>
+                <span className="relative text-lg leading-none">
+                  {i.icon}
+                  {i.to === '/announcements' && !!unreadCount && (
+                    <span className="absolute -right-1.5 -top-1 h-2 w-2 rounded-full bg-brand-600" />
+                  )}
+                </span>
                 {i.label}
               </NavLink>
             </li>
