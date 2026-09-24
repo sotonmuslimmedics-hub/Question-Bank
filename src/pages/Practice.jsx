@@ -8,7 +8,7 @@ import { PageHeader, Notice, btnDark, btnGhost, inputCls, Empty } from '../compo
 export default function Practice() {
   const nav = useNavigate()
   const sub = useSubjects()
-  const [subject, setSubject] = useState('')
+  const [subjects, setSubjects] = useState(new Set())
   const [sectionRows, setSectionRows] = useState(null)
   const [progress, setProgress] = useState({})
   const [tree, setTree] = useState(null)
@@ -33,12 +33,13 @@ export default function Practice() {
     })()
   }, [])
 
-  // Question counts depend on which subject (if any) is selected, so they're refetched on change.
+  // Question counts depend on which subjects (if any) are selected, so they're refetched on change.
+  const subjectKey = [...subjects].sort().join(',')
   useEffect(() => {
     if (!sectionRows) return
     ;(async () => {
       try {
-        const counts = await supabase.rpc('section_question_counts', { p_subject: subject || null })
+        const counts = await supabase.rpc('section_question_counts', { p_subjects: subjects.size ? [...subjects] : null })
         if (counts.error) throw counts.error
         const c = Object.fromEntries((counts.data || []).map((r) => [r.section_id, Number(r.question_count)]))
         const t = buildTree(sectionRows)
@@ -54,7 +55,8 @@ export default function Practice() {
         setError(e.message)
       }
     })()
-  }, [sectionRows, progress, subject])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sectionRows, progress, subjectKey])
 
   const selectedTotal = useMemo(() => {
     if (!tree) return 0
@@ -77,8 +79,16 @@ export default function Practice() {
   function start() {
     const q = new URLSearchParams({ s: [...picked].join(',') })
     if (Number(limit) > 0) q.set('n', String(Number(limit)))
-    if (subject) q.set('subject', subject)
+    if (subjects.size) q.set('subject', [...subjects].join(','))
     nav(`/quiz?${q}`)
+  }
+
+  function toggleSubject(id) {
+    setSubjects((prev) => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
   }
 
   const toggleOpen = (id) =>
@@ -138,17 +148,35 @@ export default function Practice() {
   }
 
   return (
-    <div className="pb-24">
+    <div className="pb-32 sm:pb-28">
       <PageHeader title="Practise">Tick anything, a whole year, a module or one topic, then start. Numbers show questions you've answered out of what's available.</PageHeader>
       <Notice tone="error">{error}</Notice>
       {sub.rows.length > 0 && (
-        <label className="mb-3 block text-sm font-medium">
-          Subject
-          <select className={`${inputCls} mt-1 sm:!w-64`} value={subject} onChange={(e) => setSubject(e.target.value)}>
-            <option value="">Any subject</option>
-            {sub.rows.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
-        </label>
+        <div className="mb-4 rounded-2xl border border-stone-200 bg-white p-3">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-sm font-medium">Subject</span>
+            {subjects.size > 0 && (
+              <button onClick={() => setSubjects(new Set())} className="text-xs font-medium text-stone-400 hover:text-stone-600">Clear</button>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {sub.rows.map((s) => {
+              const on = subjects.has(s.id)
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => toggleSubject(s.id)}
+                  aria-pressed={on}
+                  className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${on ? 'border-brand-600 bg-brand-600 text-white' : 'border-stone-300 bg-white text-stone-600 hover:bg-stone-50'}`}
+                >
+                  {s.name}
+                </button>
+              )
+            })}
+          </div>
+          {subjects.size === 0 && <p className="mt-2 text-xs text-stone-400">Any subject — pick one or more to narrow it down.</p>}
+        </div>
       )}
       {!tree && !error && <p className="text-sm text-stone-400">Loading…</p>}
       {tree && tree.roots.length === 0 && <Empty>Nothing here yet.</Empty>}
@@ -160,23 +188,25 @@ export default function Practice() {
         </ul>
       )}
 
-      <div className="safe-bottom fixed inset-x-0 bottom-[3.9rem] z-20 border-t border-stone-200 bg-white/95 px-4 py-3 backdrop-blur sm:bottom-0">
-        <div className="mx-auto flex max-w-6xl items-center gap-3">
+      <div className="safe-bottom fixed inset-x-0 bottom-[3.9rem] z-20 rounded-t-2xl border-t border-stone-200 bg-white/95 px-4 pb-4 pt-3 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.15)] backdrop-blur sm:bottom-0 sm:rounded-none">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3">
           <div className="min-w-0 flex-1 text-sm">
             <b>{selectedTotal}</b> question{selectedTotal === 1 ? '' : 's'} selected
             {picked.size > 0 && (
               <button onClick={() => setPicked(new Set())} className={`${btnGhost} ml-2`}>Clear</button>
             )}
           </div>
-          <input
-            className={`${inputCls} !w-24`}
-            inputMode="numeric"
-            placeholder="How many?"
-            value={limit}
-            onChange={(e) => setLimit(e.target.value.replace(/\D/g, ''))}
-            aria-label="Limit number of questions"
-          />
-          <button className={btnDark} disabled={!selectedTotal} onClick={start}>Start</button>
+          <div className="flex w-full items-center gap-2 sm:w-auto">
+            <input
+              className={`${inputCls} !w-24`}
+              inputMode="numeric"
+              placeholder="How many?"
+              value={limit}
+              onChange={(e) => setLimit(e.target.value.replace(/\D/g, ''))}
+              aria-label="Limit number of questions"
+            />
+            <button className={`${btnDark} flex-1 sm:flex-none`} disabled={!selectedTotal} onClick={start}>Start</button>
+          </div>
         </div>
       </div>
     </div>
