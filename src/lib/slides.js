@@ -52,6 +52,11 @@ export async function makeSlides(questions, options = {}) {
   if (subtitle) title1.addText(subtitle, { x: 0.8, y: 3.9, w: 11.7, h: 0.8, fontSize: 20, color: 'D6D3D1', fontFace: 'Calibri' })
   title1.addText(`${questions.length} question${questions.length === 1 ? '' : 's'}`, { x: 0.8, y: 6.4, w: 6, h: 0.5, fontSize: 14, color: 'A8A29E' })
 
+  // One pass per question to build its slide(s), so the caller can choose whether all the
+  // questions come first and all the answers follow, or each question is immediately followed
+  // by its own answer.
+  const builders = []
+
   for (let n = 0; n < questions.length; n++) {
     const q = questions[n]
     const parts = [...(q.question_parts || [])].sort((a, b) => a.part_number - b.part_number)
@@ -109,9 +114,13 @@ export async function makeSlides(questions, options = {}) {
       return s
     }
 
-    build(false)
-    if (answers === 'after') build(true)
+    builders.push(build)
   }
+
+  // All the question slides first, in order, then (if requested) all the answer slides, in the
+  // same order — rather than question, answer, question, answer.
+  builders.forEach((build) => build(false))
+  if (answers === 'after') builders.forEach((build) => build(true))
 
   const safe = title.replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-') || 'teaching-slides'
   await pptx.writeFile({ fileName: `${safe}.pptx` })

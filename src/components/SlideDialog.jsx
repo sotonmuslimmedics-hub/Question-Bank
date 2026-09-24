@@ -46,7 +46,7 @@ export default function SlideDialog({ ids, nodes, onClose }) {
         <label className="block text-sm font-medium">
           Answers
           <select className={`${inputCls} mt-1`} value={answers} onChange={(e) => setAnswers(e.target.value)}>
-            <option value="after">Show each answer on the slide after the question</option>
+            <option value="after">All questions first, then all the answers</option>
             <option value="none">Questions only, no answer slides</option>
           </select>
         </label>
