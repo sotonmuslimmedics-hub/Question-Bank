@@ -9,7 +9,6 @@ import Quiz from './pages/Quiz'
 import Announcements from './pages/Announcements'
 import Teach from './pages/Teach'
 import Portfolio from './pages/Portfolio'
-import Tracker from './pages/Tracker'
 import ManageQuestions from './pages/admin/ManageQuestions'
 import Teaching from './pages/admin/Teaching'
 import Structure from './pages/admin/Structure'
@@ -36,7 +35,6 @@ export default function App() {
         <Route path="practice" element={<Practice />} />
         <Route path="quiz" element={<Quiz />} />
         <Route path="announcements" element={<Announcements />} />
-        <Route path="tracker" element={<Tracker />} />
         <Route path="teach" element={<Gate min="teacher"><Teach /></Gate>} />
         <Route path="portfolio" element={<Gate min="teacher"><Portfolio /></Gate>} />
         <Route path="manage/questions" element={<Gate min="lead"><ManageQuestions /></Gate>} />

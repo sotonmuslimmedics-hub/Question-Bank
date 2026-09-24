@@ -55,7 +55,7 @@ export default function Login() {
     <div className="grid min-h-screen place-items-center px-4 py-8">
       <div className="w-full max-w-sm">
         <div className="mb-6 text-center">
-          <div className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-2xl bg-stone-900 text-sm font-bold text-white">{SHORT_NAME}</div>
+          <img src="/logo-mark.png" alt={SHORT_NAME} className="mx-auto mb-3 h-16 w-16 object-contain" />
           <h1 className="text-2xl font-bold tracking-tight">{SITE_NAME}</h1>
           <p className="mt-1 text-sm text-stone-500">{SITE_TAGLINE}</p>
         </div>

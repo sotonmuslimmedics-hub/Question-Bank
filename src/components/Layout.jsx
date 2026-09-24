@@ -10,7 +10,6 @@ function useNav() {
   const items = [
     { to: '/', label: 'Home', icon: '⌂', end: true, primary: true },
     { to: '/practice', label: 'Practise', icon: '✎', primary: true },
-    { to: '/tracker', label: 'Topics', icon: '✓', primary: true },
     { to: '/announcements', label: 'News', icon: '✉', primary: true },
   ]
   if (isTeacher) {
@@ -49,7 +48,7 @@ export default function Layout() {
       <header className="sticky top-0 z-30 border-b border-stone-200 bg-paper/95 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-2.5">
           <Link to="/" className="flex items-center gap-2 font-bold tracking-tight">
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-stone-900 text-xs text-white">{SHORT_NAME}</span>
+            <img src="/logo-mark.png" alt={SHORT_NAME} className="h-8 w-8 shrink-0 object-contain" />
             <span className="hidden sm:inline">{SITE_NAME}</span>
           </Link>
           <nav className="ml-2 hidden flex-1 flex-wrap gap-1 sm:flex">
