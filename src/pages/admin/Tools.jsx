@@ -151,7 +151,7 @@ function Importer({ kind, sec }) {
       <h2 className="font-semibold">{isMcq ? 'Import MCQs from a spreadsheet' : 'Import photo-station questions from a spreadsheet'}</h2>
       <p className="mt-1 text-sm text-stone-500">
         {isMcq
-          ? 'Save your sheet as CSV. Columns: year, module, topic, subtopic (any you use), question, a to e, correct (a letter), explanation, difficulty, author, status.'
+          ? 'Save your sheet as CSV. Columns: year, module, topic, subtopic (any you use), question, a to e, correct (a letter), explanation.'
           : 'Save your sheet as CSV. Columns: year, module, topic, subtopic, prompt, q1, a1, q2, a2, image_url, explanation. Separate several accepted answers with ";". The image link is kept for reference; photos are added afterwards by pasting them in.'}
       </p>
       <Notice tone={msg.tone}>{msg.text}</Notice>

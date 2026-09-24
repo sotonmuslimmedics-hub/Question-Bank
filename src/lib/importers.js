@@ -33,7 +33,8 @@ function common(r, find) {
 }
 
 // Multiple-choice rows. Expected columns (any order, extra columns ignored):
-// year, module, topic, subtopic (all optional), question, a-e (or option_a..), correct, explanation, difficulty, author, status
+// year, module, topic, subtopic (all optional), question, a-e (or option_a..), correct, explanation
+// difficulty, author and status are also read if present, but are no longer part of the template.
 export function parseMcq(text) {
   const rows = parseCsv(text)
   if (rows.length < 2) throw new Error('The file needs a header row and at least one question.')
@@ -112,5 +113,5 @@ export function parsePractical(text) {
   return { rows: out, errors, dupes: 0 }
 }
 
-export const MCQ_TEMPLATE = 'year,module,topic,subtopic,question,a,b,c,d,e,correct,explanation,difficulty,author,status\n'
+export const MCQ_TEMPLATE = 'year,module,topic,subtopic,question,a,b,c,d,e,correct,explanation\n'
 export const PRACTICAL_TEMPLATE = 'year,module,topic,subtopic,prompt,q1,a1,q2,a2,image_url,explanation\n'
