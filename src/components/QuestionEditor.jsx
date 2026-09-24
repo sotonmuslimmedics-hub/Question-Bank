@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { imageUrl, uploadImage, deleteImage } from '../lib/images'
 import { parseAccepted } from '../lib/answers'
-import { inputCls, btnDark, btnGhost, Notice } from './ui'
+import { inputCls, btnDark, btnGhost, Notice, Modal } from './ui'
+import ImageAnnotator from './ImageAnnotator'
 
 const LETTERS = 'ABCDEFGH'
 
@@ -29,6 +30,7 @@ export default function QuestionEditor({ initial, sections, subjects, canPublish
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [drag, setDrag] = useState(false)
+  const [annotating, setAnnotating] = useState(false)
   const inputRef = useRef(null)
 
   const setPicked = (f) => {
@@ -58,6 +60,14 @@ export default function QuestionEditor({ initial, sections, subjects, canPublish
   }, [type])
 
   const shownImage = removeImage ? null : preview || imageUrl(q.image_path)
+
+  // Only a freshly pasted/dropped/chosen image (still a local blob) can be marked up —
+  // an already-uploaded photo would need re-adding first, to keep the canvas same-origin.
+  function onAnnotated(blob) {
+    const f = new File([blob], file?.name || 'annotated.png', { type: 'image/png' })
+    setPicked(f)
+    setAnnotating(false)
+  }
 
   async function save(e) {
     e.preventDefault()
@@ -189,11 +199,18 @@ export default function QuestionEditor({ initial, sections, subjects, canPublish
             )}
             <div className="mt-3 flex justify-center gap-2">
               <button type="button" className={btnGhost} onClick={() => inputRef.current?.click()}>Choose file</button>
+              {preview && <button type="button" className={btnGhost} onClick={() => setAnnotating(true)}>Label image</button>}
               {shownImage && <button type="button" className={btnGhost} onClick={() => { setFile(null); setPreview(null); setRemoveImage(true) }}>Remove</button>}
             </div>
             <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={(e) => setPicked(e.target.files?.[0])} />
           </div>
         </div>
+      )}
+
+      {annotating && (
+        <Modal title="Label the image" onClose={() => setAnnotating(false)} wide>
+          <ImageAnnotator src={preview} onDone={onAnnotated} onCancel={() => setAnnotating(false)} />
+        </Modal>
       )}
 
       {type === 'mcq' ? (
