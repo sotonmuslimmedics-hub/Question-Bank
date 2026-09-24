@@ -12,7 +12,8 @@ const blank = () => ({
 })
 
 function csvCell(v) {
-  const s = String(v ?? '')
+  let s = String(v ?? '')
+  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}` // avoid a formula running if this is opened in Excel/Sheets
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
 }
 

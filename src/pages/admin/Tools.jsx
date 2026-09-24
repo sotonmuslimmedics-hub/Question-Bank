@@ -14,7 +14,10 @@ function download(name, text, type = 'text/csv') {
   URL.revokeObjectURL(a.href)
 }
 const cell = (v) => {
-  const s = String(v ?? '')
+  let s = String(v ?? '')
+  // Neutralise leading =, +, -, @, tab or CR so Excel/Sheets can't run a formula from
+  // question text a student teacher wrote (CSV formula injection).
+  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`
   return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
 }
 
