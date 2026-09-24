@@ -22,6 +22,7 @@ export default function Quiz() {
   const [params] = useSearchParams()
   const sectionIds = useMemo(() => (params.get('s') || '').split(',').filter(Boolean), [params])
   const limit = Number(params.get('n')) || 0
+  const subjectId = params.get('subject') || ''
   const [questions, setQuestions] = useState([])
   const [paths, setPaths] = useState(new Map())
   const [index, setIndex] = useState(0)
@@ -41,14 +42,15 @@ export default function Quiz() {
     ;(async () => {
       try {
         const [data, secs] = await Promise.all([
-          fetchAll(() =>
-            supabase
+          fetchAll(() => {
+            let q = supabase
               .from('questions')
               .select('id,stem,options,correct_option,explanation,section_id,question_type,image_path,author_name,difficulty,question_parts(id,part_number,prompt,accepted_answers)')
               .in('section_id', sectionIds)
               .eq('is_published', true)
-              .order('id'),
-          ),
+            if (subjectId) q = q.eq('subject_id', subjectId)
+            return q.order('id')
+          }),
           fetchAll(() => supabase.from('sections').select('id,parent_id,name,sort_order').order('id')),
         ])
         const prepared = data.map((q) => ({
@@ -65,7 +67,7 @@ export default function Quiz() {
       }
       setLoading(false)
     })()
-  }, [sectionIds, limit])
+  }, [sectionIds, limit, subjectId])
 
   const q = questions[index]
   const isStation = q?.question_type === 'station'

@@ -1,40 +1,60 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useSubjects } from '../lib/useSubjects'
 import { buildTree, markLocks, addTotals, practisableIds, fetchAll } from '../lib/sections'
 import { PageHeader, Notice, btnDark, btnGhost, inputCls, Empty } from '../components/ui'
 
 export default function Practice() {
   const nav = useNavigate()
+  const sub = useSubjects()
+  const [subject, setSubject] = useState('')
+  const [sectionRows, setSectionRows] = useState(null)
+  const [progress, setProgress] = useState({})
   const [tree, setTree] = useState(null)
   const [error, setError] = useState('')
   const [picked, setPicked] = useState(new Set())
   const [open, setOpen] = useState(new Set())
   const [limit, setLimit] = useState('')
 
+  // Sections and the student's all-time progress only need loading once.
   useEffect(() => {
     ;(async () => {
       try {
-        const [rows, counts, prog] = await Promise.all([
+        const [rows, prog] = await Promise.all([
           fetchAll(() => supabase.from('sections').select('id,parent_id,name,sort_order,is_locked,is_hidden').order('id')),
-          supabase.rpc('section_question_counts'),
           supabase.rpc('my_section_progress'),
         ])
-        if (counts.error) throw counts.error
-        const c = Object.fromEntries((counts.data || []).map((r) => [r.section_id, Number(r.question_count)]))
-        const p = Object.fromEntries((prog.data || []).map((r) => [r.section_id, Number(r.answered)]))
-        const t = buildTree(rows.filter((r) => !r.is_hidden))
-        markLocks(t.roots)
-        // locked sections show "coming soon" and don't count towards the totals
-        const open = Object.fromEntries(Object.entries(c).filter(([id]) => !t.nodes.get(id)?.effectiveLocked))
-        addTotals(t.roots, open, p)
-        setTree(t)
-        setOpen(new Set(t.roots.map((r) => r.id)))
+        setSectionRows(rows.filter((r) => !r.is_hidden))
+        setProgress(Object.fromEntries((prog.data || []).map((r) => [r.section_id, Number(r.answered)])))
       } catch (e) {
         setError(e.message)
       }
     })()
   }, [])
+
+  // Question counts depend on which subject (if any) is selected, so they're refetched on change.
+  useEffect(() => {
+    if (!sectionRows) return
+    ;(async () => {
+      try {
+        const counts = await supabase.rpc('section_question_counts', { p_subject: subject || null })
+        if (counts.error) throw counts.error
+        const c = Object.fromEntries((counts.data || []).map((r) => [r.section_id, Number(r.question_count)]))
+        const t = buildTree(sectionRows)
+        markLocks(t.roots)
+        // locked sections show "coming soon" and don't count towards the totals
+        const openCounts = Object.fromEntries(Object.entries(c).filter(([id]) => !t.nodes.get(id)?.effectiveLocked))
+        addTotals(t.roots, openCounts, progress)
+        setTree(t)
+        setOpen((prev) => (prev.size ? prev : new Set(t.roots.map((r) => r.id))))
+        // a topic that no longer has questions in the chosen subject shouldn't stay selected
+        setPicked((prev) => new Set([...prev].filter((id) => (t.nodes.get(id)?.ownCount || 0) > 0)))
+      } catch (e) {
+        setError(e.message)
+      }
+    })()
+  }, [sectionRows, progress, subject])
 
   const selectedTotal = useMemo(() => {
     if (!tree) return 0
@@ -57,6 +77,7 @@ export default function Practice() {
   function start() {
     const q = new URLSearchParams({ s: [...picked].join(',') })
     if (Number(limit) > 0) q.set('n', String(Number(limit)))
+    if (subject) q.set('subject', subject)
     nav(`/quiz?${q}`)
   }
 
@@ -120,6 +141,15 @@ export default function Practice() {
     <div className="pb-24">
       <PageHeader title="Practise">Tick anything, a whole year, a module or one topic, then start. Numbers show questions you've answered out of what's available.</PageHeader>
       <Notice tone="error">{error}</Notice>
+      {sub.rows.length > 0 && (
+        <label className="mb-3 block text-sm font-medium">
+          Subject
+          <select className={`${inputCls} mt-1 sm:!w-64`} value={subject} onChange={(e) => setSubject(e.target.value)}>
+            <option value="">Any subject</option>
+            {sub.rows.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        </label>
+      )}
       {!tree && !error && <p className="text-sm text-stone-400">Loading…</p>}
       {tree && tree.roots.length === 0 && <Empty>Nothing here yet.</Empty>}
       {tree && (

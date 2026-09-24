@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useSections } from '../../lib/useSections'
+import { useSubjects } from '../../lib/useSubjects'
 import { descendantIds, pathOf } from '../../lib/sections'
 import { deleteImage } from '../../lib/images'
 import QuestionEditor from '../../components/QuestionEditor'
@@ -11,11 +12,13 @@ const PAGE = 40
 
 export default function ManageQuestions() {
   const sec = useSections()
+  const sub = useSubjects()
+  const subjectName = (id) => sub.rows.find((s) => s.id === id)?.name
   const [rows, setRows] = useState([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [msg, setMsg] = useState({ text: '', tone: 'ok' })
-  const [f, setF] = useState({ section: '', status: 'all', type: 'all', q: '', mine: false })
+  const [f, setF] = useState({ section: '', subject: '', status: 'all', type: 'all', q: '', mine: false })
   const [picked, setPicked] = useState(new Set())
   const [editing, setEditing] = useState(null)
   const [slides, setSlides] = useState(false)
@@ -26,10 +29,11 @@ export default function ManageQuestions() {
       setLoading(true)
       let query = supabase
         .from('questions')
-        .select('id,stem,options,correct_option,explanation,section_id,question_type,image_path,is_published,difficulty,author_name,created_by,created_at,question_parts(id,part_number,prompt,accepted_answers)', { count: 'exact' })
+        .select('id,stem,options,correct_option,explanation,section_id,subject_id,question_type,image_path,is_published,difficulty,author_name,created_by,created_at,question_parts(id,part_number,prompt,accepted_answers)', { count: 'exact' })
         .order('created_at', { ascending: false })
         .range(from, from + PAGE - 1)
       if (f.section && sec.nodes.get(f.section)) query = query.in('section_id', descendantIds(sec.nodes.get(f.section)))
+      if (f.subject) query = query.eq('subject_id', f.subject)
       if (f.status === 'published') query = query.eq('is_published', true)
       if (f.status === 'draft') query = query.eq('is_published', false)
       if (f.type !== 'all') query = query.eq('question_type', f.type)
@@ -76,10 +80,14 @@ export default function ManageQuestions() {
       </PageHeader>
       <Notice tone={msg.tone} onClose={() => setMsg({ text: '' })}>{msg.text}</Notice>
 
-      <div className="mb-3 grid gap-2 sm:grid-cols-4">
+      <div className="mb-3 grid gap-2 sm:grid-cols-5">
         <select className={inputCls} value={f.section} onChange={(e) => setF({ ...f, section: e.target.value })}>
           <option value="">All sections</option>
           {sec.flat.map((s) => <option key={s.id} value={s.id}>{' '.repeat(s.depth)}{s.name}</option>)}
+        </select>
+        <select className={inputCls} value={f.subject} onChange={(e) => setF({ ...f, subject: e.target.value })}>
+          <option value="">All subjects</option>
+          {sub.rows.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
         <select className={inputCls} value={f.status} onChange={(e) => setF({ ...f, status: e.target.value })}>
           <option value="all">Any status</option>
@@ -105,6 +113,7 @@ export default function ManageQuestions() {
               <span className="mt-1 flex flex-wrap items-center gap-2 text-xs text-stone-500">
                 <Pill tone={q.is_published ? 'green' : 'amber'}>{q.is_published ? 'Live' : 'Draft'}</Pill>
                 <Pill>{q.question_type === 'station' ? 'Photo' : 'MCQ'}</Pill>
+                {subjectName(q.subject_id) && <Pill>{subjectName(q.subject_id)}</Pill>}
                 {q.author_name && <span>{q.author_name}</span>}
                 <span className="truncate">{pathOf(sec.nodes, q.section_id)}</span>
               </span>
@@ -134,7 +143,7 @@ export default function ManageQuestions() {
 
       {editing && (
         <Modal title={editing.id ? 'Edit question' : 'New question'} onClose={() => setEditing(null)} wide>
-          <QuestionEditor initial={editing.id ? editing : null} sections={sec.flat} canPublish onCancel={() => setEditing(null)} onSaved={() => { setEditing(null); load(false, 0) }} />
+          <QuestionEditor initial={editing.id ? editing : null} sections={sec.flat} subjects={sub.rows} canPublish onCancel={() => setEditing(null)} onSaved={() => { setEditing(null); load(false, 0) }} />
         </Modal>
       )}
       {slides && <SlideDialog ids={ids} nodes={sec.nodes} onClose={() => setSlides(false)} />}

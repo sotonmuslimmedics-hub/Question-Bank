@@ -8,10 +8,11 @@ const LETTERS = 'ABCDEFGH'
 
 // Shared by student teachers (their own drafts) and leads/admins (anything).
 // Photos can be pasted from the clipboard, dropped, or chosen from the device.
-export default function QuestionEditor({ initial, sections, canPublish, onSaved, onCancel }) {
+export default function QuestionEditor({ initial, sections, subjects, canPublish, onSaved, onCancel }) {
   const q = initial || {}
   const [type, setType] = useState(q.question_type || 'mcq')
   const [sectionId, setSectionId] = useState(q.section_id || '')
+  const [subjectId, setSubjectId] = useState(q.subject_id || '')
   const [stem, setStem] = useState(q.stem || '')
   const [options, setOptions] = useState(q.options || ['', '', '', '', ''])
   const [correct, setCorrect] = useState(q.correct_option ?? 0)
@@ -62,6 +63,7 @@ export default function QuestionEditor({ initial, sections, canPublish, onSaved,
     e.preventDefault()
     setError('')
     if (!sectionId) return setError('Choose where this question belongs.')
+    if (!subjectId) return setError('Choose a subject.')
     if (!stem.trim()) return setError('The question text is empty.')
     const clean = options.map((o) => o.trim())
     if (type === 'mcq') {
@@ -90,6 +92,7 @@ export default function QuestionEditor({ initial, sections, canPublish, onSaved,
       const imagePath = type === 'station' ? (newPath ?? (removeImage ? null : q.image_path ?? null)) : null
       const row = {
         section_id: sectionId,
+        subject_id: subjectId,
         question_type: type,
         stem: stem.trim(),
         options: opts,
@@ -154,6 +157,14 @@ export default function QuestionEditor({ initial, sections, canPublish, onSaved,
               {s.node.effectiveLocked ? ' (locked)' : ''}
             </option>
           ))}
+        </select>
+      </label>
+
+      <label className="block text-sm font-medium">
+        Subject
+        <select className={`${inputCls} mt-1`} value={subjectId} onChange={(e) => setSubjectId(e.target.value)} required>
+          <option value="">Choose…</option>
+          {(subjects || []).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
       </label>
 

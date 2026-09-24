@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { useSections } from '../lib/useSections'
+import { useSubjects } from '../lib/useSubjects'
 import { pathOf, fetchAll } from '../lib/sections'
 import { deleteImage } from '../lib/images'
 import QuestionEditor from '../components/QuestionEditor'
@@ -12,6 +13,7 @@ import { PageHeader, Notice, Empty, Pill, Modal, btnDark, btnGhost, btnDanger, c
 export default function Teach() {
   const { user } = useAuth()
   const sec = useSections()
+  const sub = useSubjects()
   const [rows, setRows] = useState(null)
   const [error, setError] = useState('')
   const [editing, setEditing] = useState(null) // question | {} for new
@@ -23,7 +25,7 @@ export default function Teach() {
       const data = await fetchAll(() =>
         supabase
           .from('questions')
-          .select('id,stem,options,correct_option,explanation,section_id,question_type,image_path,is_published,difficulty,created_at,question_parts(id,part_number,prompt,accepted_answers)')
+          .select('id,stem,options,correct_option,explanation,section_id,subject_id,question_type,image_path,is_published,difficulty,created_at,question_parts(id,part_number,prompt,accepted_answers)')
           .eq('created_by', user.id)
           .order('created_at', { ascending: false }),
       )
@@ -77,6 +79,7 @@ export default function Teach() {
               <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-stone-500">
                 <Pill tone={q.is_published ? 'green' : 'amber'}>{q.is_published ? 'Live' : 'Draft'}</Pill>
                 <Pill>{q.question_type === 'station' ? 'Photo' : 'MCQ'}</Pill>
+                {sub.rows.find((s) => s.id === q.subject_id)?.name && <Pill>{sub.rows.find((s) => s.id === q.subject_id).name}</Pill>}
                 <span className="truncate">{pathOf(sec.nodes, q.section_id)}</span>
               </div>
               {!q.is_published && (
@@ -95,6 +98,7 @@ export default function Teach() {
           <QuestionEditor
             initial={editing.id ? editing : null}
             sections={sec.flat}
+            subjects={sub.rows}
             canPublish={false}
             onCancel={() => setEditing(null)}
             onSaved={() => { setEditing(null); load() }}
