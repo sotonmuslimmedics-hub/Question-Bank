@@ -15,7 +15,6 @@ function useNav() {
   if (isTeacher) {
     items.push({ to: '/teach', label: 'Teach', icon: '▤', primary: true, group: 'Teaching' })
     items.push({ to: '/portfolio', label: 'Portfolio', icon: '☰', group: 'Teaching' })
-    items.push({ to: '/coverage', label: 'Content coverage', icon: '☑', group: 'Teaching' })
   }
   if (isLead) items.push({ to: '/manage/questions', label: 'Questions', icon: '?', group: 'Manage' })
   if (isAdmin) {
