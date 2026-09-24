@@ -4,22 +4,18 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { buildTree, pathOf, fetchAll } from '../lib/sections'
 import { SITE_TAGLINE } from '../config'
-import { btnDark, card, Pill } from '../components/ui'
+import { card, Pill } from '../components/ui'
 import { fmtDate } from './Announcements'
 
 // A topic needs at least this many attempts before it counts towards strongest/weakest,
 // so one lucky or unlucky guess doesn't dominate the list.
 const MIN_ATTEMPTS = 3
 
-// What this site does that other banks don't. Only claims that are true of this build.
-const FEATURES = [
-  { t: 'Photo stations', d: 'Practical questions with an image and two short typed answers, marked instantly.' },
-  { t: 'Practise by topic', d: 'Pick any level of the syllabus, from a whole year down to a single topic.' },
-  { t: 'Near-peer teachers', d: 'Student teachers write questions, which are reviewed by academic leads before going live.' },
-  { t: 'Teaching slides', d: 'Turn questions into PowerPoint teaching slides in one click.' },
-  { t: 'Built for phones', d: 'Designed thumb-first, so revision works on the bus as well as at a desk.' },
-  { t: 'Yours to reshape', d: 'Committees can rename modules and restructure topics without a developer.' },
-]
+function band(pct) {
+  if (pct >= 80) return 'green'
+  if (pct >= 50) return 'amber'
+  return 'red'
+}
 
 export default function Home() {
   const { profile, user } = useAuth()
@@ -42,7 +38,6 @@ export default function Home() {
 
       const { nodes } = buildTree(secs)
       const ranked = (perf.data || [])
-        .filter((r) => Number(r.attempted) >= MIN_ATTEMPTS)
         .map((r) => ({
           id: r.section_id,
           path: pathOf(nodes, r.section_id) || 'Unknown topic',
@@ -57,8 +52,9 @@ export default function Home() {
 
   const first = (profile?.full_name || '').split(' ')[0]
   const pct = stats?.done ? Math.round((stats.correct / stats.done) * 100) : null
-  const strongest = (topics || []).slice(0, 3)
-  const weakest = (topics || []).slice(-3).reverse().filter((t) => !strongest.includes(t))
+  const ranked = (topics || []).filter((t) => t.attempted >= MIN_ATTEMPTS)
+  const strongest = ranked.slice(0, 3)
+  const weakest = ranked.slice(-3).reverse().filter((t) => !strongest.includes(t))
 
   return (
     <div className="space-y-6">
@@ -75,27 +71,31 @@ export default function Home() {
         </div>
       </section>
 
-      {stats && stats.done > 0 && (
-        <section>
-          <h2 className="mb-2 font-semibold">Your marks breakdown</h2>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className={card}>
-              <span className="text-xs uppercase tracking-wide text-stone-400">Answered</span>
-              <p className="mt-1 text-2xl font-bold">{stats.done}</p>
-            </div>
-            <div className={card}>
-              <span className="text-xs uppercase tracking-wide text-stone-400">Correct</span>
-              <p className="mt-1 text-2xl font-bold">{stats.correct}</p>
-            </div>
-            <div className={card}>
-              <span className="text-xs uppercase tracking-wide text-stone-400">Accuracy</span>
-              <p className="mt-1 text-2xl font-bold">{pct}%</p>
-            </div>
+      <section>
+        <h2 className="mb-2 font-semibold">Your marks breakdown</h2>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className={card}>
+            <span className="text-xs uppercase tracking-wide text-stone-400">Answered</span>
+            <p className="mt-1 text-2xl font-bold">{stats?.done ?? '–'}</p>
           </div>
+          <div className={card}>
+            <span className="text-xs uppercase tracking-wide text-stone-400">Correct</span>
+            <p className="mt-1 text-2xl font-bold">{stats?.correct ?? '–'}</p>
+          </div>
+          <div className={card}>
+            <span className="text-xs uppercase tracking-wide text-stone-400">Accuracy</span>
+            <p className="mt-1 text-2xl font-bold">{pct !== null ? `${pct}%` : '–'}</p>
+          </div>
+        </div>
 
-          {topics === null ? null : topics.length === 0 ? (
-            <p className="mt-3 text-sm text-stone-400">Answer at least {MIN_ATTEMPTS} questions in a topic to see your strongest and weakest areas here.</p>
-          ) : (
+        {stats && stats.done === 0 ? (
+          <p className="mt-3 text-sm text-stone-400">
+            You haven't answered any questions yet. <Link to="/practice" className="font-medium text-brand-700">Start practising</Link> to see your breakdown here.
+          </p>
+        ) : ranked.length === 0 ? (
+          <p className="mt-3 text-sm text-stone-400">Answer at least {MIN_ATTEMPTS} questions in a topic to see it broken down here.</p>
+        ) : (
+          <>
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
               <div className={card}>
                 <b className="text-sm">Strongest topics</b>
@@ -124,9 +124,24 @@ export default function Home() {
                 )}
               </div>
             </div>
-          )}
-        </section>
-      )}
+
+            <div className={`${card} mt-3`}>
+              <b className="text-sm">Every topic you've tried</b>
+              <div className="mt-2 divide-y divide-stone-100">
+                {ranked.map((t) => (
+                  <div key={t.id} className="flex items-center justify-between gap-3 py-2 text-sm">
+                    <span className="min-w-0 truncate text-stone-600">{t.path}</span>
+                    <span className="flex shrink-0 items-center gap-2">
+                      <span className="text-xs text-stone-400">{t.correct}/{t.attempted}</span>
+                      <Pill tone={band(t.pct)}>{t.pct}%</Pill>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+      </section>
 
       {news.length > 0 && (
         <section>
@@ -147,18 +162,6 @@ export default function Home() {
           </div>
         </section>
       )}
-
-      <section>
-        <h2 className="mb-2 font-semibold">What's different here</h2>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {FEATURES.map((f) => (
-            <div key={f.t} className={card}>
-              <b className="text-sm">{f.t}</b>
-              <p className="mt-1 text-sm text-stone-600">{f.d}</p>
-            </div>
-          ))}
-        </div>
-      </section>
     </div>
   )
 }
