@@ -13,11 +13,22 @@ export default function Structure() {
   const [parent, setParent] = useState('')
   const fail = (e) => setMsg({ text: e.message, tone: 'error' })
 
+  // Reordering (and every other edit here) reloads the whole tree from
+  // scratch, which was leaving the page scrolled back to the top each time —
+  // jarring when you're working several levels deep in a long syllabus.
+  // Reloading in place and restoring the scroll position keeps you where
+  // you were.
+  async function reloadKeepScroll() {
+    const y = window.scrollY
+    await sec.reload()
+    requestAnimationFrame(() => window.scrollTo(0, y))
+  }
+
   async function run(p, ok) {
     const { error } = await p
     if (error) return fail(error)
     if (ok) setMsg({ text: ok, tone: 'ok' })
-    sec.reload()
+    await reloadKeepScroll()
   }
 
   function siblingsOf(n) {
@@ -35,7 +46,7 @@ export default function Structure() {
     const results = await Promise.all(order.map((s, k) => supabase.from('sections').update({ sort_order: k }).eq('id', s.id)))
     const bad = results.find((r) => r.error)
     if (bad) fail(bad.error)
-    sec.reload()
+    await reloadKeepScroll()
   }
 
   async function submit(e) {
@@ -65,14 +76,14 @@ export default function Structure() {
           {n.is_locked && <Pill tone="amber">Locked</Pill>}
           {n.is_hidden && <Pill>Hidden</Pill>}
           <div className="flex flex-wrap gap-1">
-            <button className={btnGhost} onClick={() => shift(n, -1)} aria-label="Move up">↑</button>
-            <button className={btnGhost} onClick={() => shift(n, 1)} aria-label="Move down">↓</button>
-            <button className={btnGhost} onClick={() => { setName(''); setDlg({ kind: 'add', node: n }) }}>+ Child</button>
-            <button className={btnGhost} onClick={() => { setName(n.name); setDlg({ kind: 'rename', node: n }) }}>Rename</button>
-            <button className={btnGhost} onClick={() => { setParent(n.parent_id || ''); setDlg({ kind: 'move', node: n }) }}>Move</button>
-            <button className={btnGhost} onClick={() => run(supabase.from('sections').update({ is_locked: !n.is_locked }).eq('id', n.id))}>{n.is_locked ? 'Unlock' : 'Lock'}</button>
-            <button className={btnGhost} onClick={() => run(supabase.from('sections').update({ is_hidden: !n.is_hidden }).eq('id', n.id))}>{n.is_hidden ? 'Show' : 'Hide'}</button>
-            <button className={btnDanger} onClick={() => del(n)}>Delete</button>
+            <button type="button" className={btnGhost} onClick={() => shift(n, -1)} aria-label="Move up">↑</button>
+            <button type="button" className={btnGhost} onClick={() => shift(n, 1)} aria-label="Move down">↓</button>
+            <button type="button" className={btnGhost} onClick={() => { setName(''); setDlg({ kind: 'add', node: n }) }}>+ Child</button>
+            <button type="button" className={btnGhost} onClick={() => { setName(n.name); setDlg({ kind: 'rename', node: n }) }}>Rename</button>
+            <button type="button" className={btnGhost} onClick={() => { setParent(n.parent_id || ''); setDlg({ kind: 'move', node: n }) }}>Move</button>
+            <button type="button" className={btnGhost} onClick={() => run(supabase.from('sections').update({ is_locked: !n.is_locked }).eq('id', n.id))}>{n.is_locked ? 'Unlock' : 'Lock'}</button>
+            <button type="button" className={btnGhost} onClick={() => run(supabase.from('sections').update({ is_hidden: !n.is_hidden }).eq('id', n.id))}>{n.is_hidden ? 'Show' : 'Hide'}</button>
+            <button type="button" className={btnDanger} onClick={() => del(n)}>Delete</button>
           </div>
         </div>
         {n.children.length > 0 && <ul>{n.children.map((c) => <Row key={c.id} n={c} depth={depth + 1} />)}</ul>}
