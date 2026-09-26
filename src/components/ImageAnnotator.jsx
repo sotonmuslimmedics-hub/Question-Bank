@@ -69,7 +69,6 @@ export default function ImageAnnotator({ src, onDone, onCancel }) {
   const [ready, setReady] = useState(false)
   const drawingRef = useRef(null) // shape in progress
   const [, forceRedraw] = useState(0)
-  const [textInput, setTextInput] = useState(null) // {x, y, clientX, clientY, value}
 
   const lineWidth = () => {
     const c = canvasRef.current
@@ -115,8 +114,13 @@ export default function ImageAnnotator({ src, onDone, onCancel }) {
     if (!ready) return
     const p = toCanvasPoint(e)
     if (tool === 'text') {
-      const rect = canvasRef.current.getBoundingClientRect()
-      setTextInput({ x: p.x, y: p.y, clientX: e.clientX - rect.left, clientY: e.clientY - rect.top, value: '' })
+      // A plain prompt, rather than a custom floating input positioned over
+      // the canvas — the floating input depended on exact pixel math across
+      // scroll/zoom/canvas-scale that could silently misplace or hide it.
+      const text = window.prompt('Label text:')
+      if (text && text.trim()) {
+        setShapes((s) => [...s, { type: 'text', color, x: p.x, y: p.y, text: text.trim() }])
+      }
       return
     }
     canvasRef.current.setPointerCapture(e.pointerId)
@@ -144,13 +148,6 @@ export default function ImageAnnotator({ src, onDone, onCancel }) {
     // by which point drawingRef.current would already be null otherwise.
     drawingRef.current = null
     setShapes((s) => [...s, finished])
-  }
-
-  function commitText() {
-    if (textInput && textInput.value.trim()) {
-      setShapes((s) => [...s, { type: 'text', color, x: textInput.x, y: textInput.y, text: textInput.value.trim() }])
-    }
-    setTextInput(null)
   }
 
   function undo() {
@@ -209,18 +206,6 @@ export default function ImageAnnotator({ src, onDone, onCancel }) {
           onPointerLeave={onPointerUp}
         />
         {!ready && <p className="p-8 text-center text-sm text-stone-400">Loading image…</p>}
-        {textInput && (
-          <input
-            autoFocus
-            value={textInput.value}
-            onChange={(e) => setTextInput((t) => ({ ...t, value: e.target.value }))}
-            onKeyDown={(e) => { if (e.key === 'Enter') commitText(); if (e.key === 'Escape') setTextInput(null) }}
-            onBlur={commitText}
-            placeholder="Label…"
-            className="absolute z-10 rounded border-2 px-1 text-sm"
-            style={{ left: textInput.clientX, top: textInput.clientY, borderColor: color, color, minWidth: 80 }}
-          />
-        )}
       </div>
 
       <p className="mt-2 text-xs text-stone-400">Pick a tool and colour, then draw directly on the image. Click with the text tool to drop a label.</p>
