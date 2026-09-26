@@ -15,6 +15,7 @@ const MAX_DIM = 2000
 
 // Draws one committed shape (or the in-progress one) onto the canvas.
 function drawShape(ctx, shape, lineWidth) {
+  if (!shape) return
   ctx.strokeStyle = shape.color
   ctx.fillStyle = shape.color
   ctx.lineWidth = lineWidth
@@ -136,9 +137,13 @@ export default function ImageAnnotator({ src, onDone, onCancel }) {
   }
 
   function onPointerUp() {
-    if (!drawingRef.current) return
-    setShapes((s) => [...s, drawingRef.current])
+    const finished = drawingRef.current
+    if (!finished) return
+    // Clear the ref first, then close over the captured value (not the ref)
+    // in the updater — React runs this callback after the handler returns,
+    // by which point drawingRef.current would already be null otherwise.
     drawingRef.current = null
+    setShapes((s) => [...s, finished])
   }
 
   function commitText() {
