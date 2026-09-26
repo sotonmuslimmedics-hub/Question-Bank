@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { useSections } from '../lib/useSections'
 import { pathOf } from '../lib/sections'
-import { PageHeader, Notice, Empty, Modal, inputCls, btnDark, btnGhost, btnDanger, card } from '../components/ui'
+import { PageHeader, Notice, Empty, Modal, inputCls, btnDark, btnGhost, btnDanger, card, useConfirm } from '../components/ui'
 
 const TYPES = ['Small group', 'Lecture-style', 'One-to-one', 'Online', 'Revision session', 'Other']
 const blank = () => ({
@@ -21,6 +21,7 @@ function csvCell(v) {
 export default function Portfolio() {
   const { user } = useAuth()
   const sec = useSections()
+  const [confirmDialog, askConfirm] = useConfirm()
   const [rows, setRows] = useState(null)
   const [error, setError] = useState('')
   const [edit, setEdit] = useState(null)
@@ -63,7 +64,8 @@ export default function Portfolio() {
   }
 
   async function remove(id) {
-    if (!confirm('Delete this entry?')) return
+    const ok = await askConfirm('Delete this entry?')
+    if (!ok) return
     const { error } = await supabase.from('teaching_sessions').delete().eq('id', id)
     if (error) setError(error.message)
     load()
@@ -156,6 +158,7 @@ export default function Portfolio() {
           </form>
         </Modal>
       )}
+      {confirmDialog}
     </div>
   )
 }

@@ -1,22 +1,31 @@
 import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useSubjects } from '../../lib/useSubjects'
-import { PageHeader, Notice, Empty, Modal, inputCls, btnDark, btnGhost, btnDanger } from '../../components/ui'
+import { PageHeader, Notice, Empty, Modal, inputCls, btnDark, btnGhost, btnDanger, useConfirm } from '../../components/ui'
 
 // A flat, admin-managed list (anatomy, physiology, pharmacology, ...). Leads pick from this
 // list on every question instead of typing a free-text tag, so names stay consistent.
 export default function Subjects() {
   const sub = useSubjects()
+  const [confirmDialog, askConfirm] = useConfirm()
   const [msg, setMsg] = useState({ text: '', tone: 'ok' })
   const [dlg, setDlg] = useState(null) // {kind:'add'|'rename', row?}
   const [name, setName] = useState('')
   const fail = (e) => setMsg({ text: e.message, tone: 'error' })
 
+  // Keeps the page from jumping back to the top after every reorder/edit
+  // (each one reloads the whole list from scratch).
+  async function reloadKeepScroll() {
+    const y = window.scrollY
+    await sub.reload()
+    requestAnimationFrame(() => window.scrollTo(0, y))
+  }
+
   async function run(p, ok) {
     const { error } = await p
     if (error) return fail(error)
     if (ok) setMsg({ text: ok, tone: 'ok' })
-    sub.reload()
+    await reloadKeepScroll()
   }
 
   async function shift(row, dir) {
@@ -29,7 +38,7 @@ export default function Subjects() {
     const results = await Promise.all(order.map((r, k) => supabase.from('subjects').update({ sort_order: k }).eq('id', r.id)))
     const bad = results.find((r) => r.error)
     if (bad) fail(bad.error)
-    sub.reload()
+    await reloadKeepScroll()
   }
 
   async function submit(e) {
@@ -43,7 +52,8 @@ export default function Subjects() {
   }
 
   async function del(row) {
-    if (!confirm(`Delete "${row.name}"? Questions using it keep their other details but lose this subject.`)) return
+    const ok = await askConfirm(`Delete "${row.name}"? Questions using it keep their other details but lose this subject.`)
+    if (!ok) return
     run(supabase.from('subjects').delete().eq('id', row.id), 'Deleted')
   }
 
@@ -61,10 +71,10 @@ export default function Subjects() {
           <li key={r.id} className="flex flex-wrap items-center gap-2 rounded-xl px-2 py-2 hover:bg-stone-50">
             <span className="min-w-0 flex-1 truncate text-sm">{r.name}</span>
             <div className="flex flex-wrap gap-1">
-              <button className={btnGhost} onClick={() => shift(r, -1)} aria-label="Move up">↑</button>
-              <button className={btnGhost} onClick={() => shift(r, 1)} aria-label="Move down">↓</button>
-              <button className={btnGhost} onClick={() => { setName(r.name); setDlg({ kind: 'rename', row: r }) }}>Rename</button>
-              <button className={btnDanger} onClick={() => del(r)}>Delete</button>
+              <button type="button" className={btnGhost} onClick={() => shift(r, -1)} aria-label="Move up">↑</button>
+              <button type="button" className={btnGhost} onClick={() => shift(r, 1)} aria-label="Move down">↓</button>
+              <button type="button" className={btnGhost} onClick={() => { setName(r.name); setDlg({ kind: 'rename', row: r }) }}>Rename</button>
+              <button type="button" className={btnDanger} onClick={() => del(r)}>Delete</button>
             </div>
           </li>
         ))}
@@ -78,6 +88,7 @@ export default function Subjects() {
           </form>
         </Modal>
       )}
+      {confirmDialog}
     </div>
   )
 }

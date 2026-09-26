@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { useAnnouncementReads } from '../lib/announcementReads'
-import { PageHeader, Notice, Empty, Pill, Modal, inputCls, btnDark, btnGhost, btnDanger, card } from '../components/ui'
+import { PageHeader, Notice, Empty, Pill, Modal, inputCls, btnDark, btnGhost, btnDanger, card, useConfirm } from '../components/ui'
 
 export function fmtDate(d) {
   return new Date(d).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
@@ -11,6 +11,7 @@ export function fmtDate(d) {
 export default function Announcements() {
   const { isLead, user } = useAuth()
   const { lastSeenAt, markSeen } = useAnnouncementReads() || {}
+  const [confirmDialog, askConfirm] = useConfirm()
   const [rows, setRows] = useState(null)
   const [error, setError] = useState('')
   const [edit, setEdit] = useState(null) // {id?, title, body, pinned}
@@ -43,7 +44,8 @@ export default function Announcements() {
   }
 
   async function remove(id) {
-    if (!confirm('Delete this announcement?')) return
+    const ok = await askConfirm('Delete this announcement?')
+    if (!ok) return
     const { error } = await supabase.from('announcements').delete().eq('id', id)
     if (error) setError(error.message)
     load()
@@ -95,6 +97,7 @@ export default function Announcements() {
           </form>
         </Modal>
       )}
+      {confirmDialog}
     </div>
   )
 }

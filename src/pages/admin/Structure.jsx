@@ -2,11 +2,12 @@ import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useSections } from '../../lib/useSections'
 import { descendantIds } from '../../lib/sections'
-import { PageHeader, Notice, Modal, inputCls, btnDark, btnGhost, btnDanger, Pill } from '../../components/ui'
+import { PageHeader, Notice, Modal, inputCls, btnDark, btnGhost, btnDanger, Pill, useConfirm } from '../../components/ui'
 
 // Any depth, any names. Levels aren't fixed: a committee can use Year > Module > Topic, or add/skip levels.
 export default function Structure() {
   const sec = useSections()
+  const [confirmDialog, askConfirm] = useConfirm()
   const [msg, setMsg] = useState({ text: '', tone: 'ok' })
   const [dlg, setDlg] = useState(null) // {kind:'add'|'rename'|'move', node?}
   const [name, setName] = useState('')
@@ -64,7 +65,8 @@ export default function Structure() {
   }
 
   async function del(n) {
-    if (!confirm(`Delete "${n.name}"${n.children.length ? ' and everything under it' : ''}? This is blocked while any questions are inside.`)) return
+    const ok = await askConfirm(`Delete "${n.name}"${n.children.length ? ' and everything under it' : ''}? This is blocked while any questions are inside.`)
+    if (!ok) return
     run(supabase.from('sections').delete().eq('id', n.id), 'Deleted')
   }
 
@@ -104,6 +106,7 @@ export default function Structure() {
       <ul className="rounded-2xl border border-stone-200 bg-white p-2">
         {sec.roots.map((r) => <Row key={r.id} n={r} depth={0} />)}
       </ul>
+      {confirmDialog}
 
       {dlg && (
         <Modal title={dlg.kind === 'add' ? (dlg.node ? `Add under "${dlg.node.name}"` : 'Add top-level section') : dlg.kind === 'rename' ? 'Rename' : `Move "${dlg.node.name}"`} onClose={() => setDlg(null)}>

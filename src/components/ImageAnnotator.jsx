@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { btnDark, btnGhost } from './ui'
+import { btnDark, btnGhost, usePrompt } from './ui'
 
 const TOOLS = [
   ['freehand', '✎', 'Freehand'],
@@ -69,6 +69,7 @@ export default function ImageAnnotator({ src, onDone, onCancel }) {
   const [ready, setReady] = useState(false)
   const drawingRef = useRef(null) // shape in progress
   const [, forceRedraw] = useState(0)
+  const [promptDialog, askText] = usePrompt()
 
   const lineWidth = () => {
     const c = canvasRef.current
@@ -110,16 +111,18 @@ export default function ImageAnnotator({ src, onDone, onCancel }) {
     return { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY }
   }
 
-  function onPointerDown(e) {
+  async function onPointerDown(e) {
     if (!ready) return
     const p = toCanvasPoint(e)
     if (tool === 'text') {
-      // A plain prompt, rather than a custom floating input positioned over
-      // the canvas — the floating input depended on exact pixel math across
-      // scroll/zoom/canvas-scale that could silently misplace or hide it.
-      const text = window.prompt('Label text:')
-      if (text && text.trim()) {
-        setShapes((s) => [...s, { type: 'text', color, x: p.x, y: p.y, text: text.trim() }])
+      // An in-app prompt, rather than a custom floating input positioned over
+      // the canvas (which depended on exact pixel math across scroll/zoom/
+      // canvas-scale and could silently misplace or hide it) or a native
+      // window.prompt() (which can leave some browsers, e.g. Arc, with the
+      // rest of the page unresponsive afterwards).
+      const text = await askText('Label text:')
+      if (text) {
+        setShapes((s) => [...s, { type: 'text', color, x: p.x, y: p.y, text }])
       }
       return
     }
@@ -214,6 +217,7 @@ export default function ImageAnnotator({ src, onDone, onCancel }) {
         <button type="button" className={btnDark} onClick={done} disabled={!ready}>Use this image</button>
         <button type="button" className={btnGhost} onClick={onCancel}>Cancel</button>
       </div>
+      {promptDialog}
     </div>
   )
 }

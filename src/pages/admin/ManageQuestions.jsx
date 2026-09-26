@@ -6,13 +6,14 @@ import { descendantIds, pathOf } from '../../lib/sections'
 import { deleteImage } from '../../lib/images'
 import QuestionEditor from '../../components/QuestionEditor'
 import SlideDialog from '../../components/SlideDialog'
-import { PageHeader, Notice, Empty, Pill, Modal, inputCls, btnDark, btnGhost, btnDanger } from '../../components/ui'
+import { PageHeader, Notice, Empty, Pill, Modal, inputCls, btnDark, btnGhost, btnDanger, useConfirm } from '../../components/ui'
 
 const PAGE = 40
 
 export default function ManageQuestions() {
   const sec = useSections()
   const sub = useSubjects()
+  const [confirmDialog, askConfirm] = useConfirm()
   const subjectName = (id) => sub.rows.find((s) => s.id === id)?.name
   const [rows, setRows] = useState([])
   const [total, setTotal] = useState(0)
@@ -63,7 +64,8 @@ export default function ManageQuestions() {
   }
 
   async function bulkDelete() {
-    if (!confirm(`Delete ${ids.length} question${ids.length === 1 ? '' : 's'} and their photos? This cannot be undone.`)) return
+    const ok = await askConfirm(`Delete ${ids.length} question${ids.length === 1 ? '' : 's'} and their photos? This cannot be undone.`)
+    if (!ok) return
     const imgs = rows.filter((r) => picked.has(r.id) && r.image_path).map((r) => r.image_path)
     const { error } = await supabase.from('questions').delete().in('id', ids)
     if (error) return setMsg({ text: error.message, tone: 'error' })
@@ -147,6 +149,7 @@ export default function ManageQuestions() {
         </Modal>
       )}
       {slides && <SlideDialog ids={ids} nodes={sec.nodes} onClose={() => setSlides(false)} />}
+      {confirmDialog}
       {moveTo !== null && (
         <Modal title={`Move ${picked.size} question${picked.size === 1 ? '' : 's'}`} onClose={() => setMoveTo(null)}>
           <select className={inputCls} value={moveTo} onChange={(e) => setMoveTo(e.target.value)}>

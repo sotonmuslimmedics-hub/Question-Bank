@@ -1,4 +1,5 @@
 // Small shared building blocks so every page looks and behaves the same.
+import { useCallback, useState } from 'react'
 export const inputCls =
   'w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 disabled:bg-stone-50 disabled:text-stone-400'
 export const btnPrimary =
@@ -54,6 +55,55 @@ export function Pill({ children, tone = 'stone' }) {
 
 export function Empty({ children }) {
   return <p className="rounded-2xl border border-dashed border-stone-300 px-4 py-8 text-center text-sm text-stone-400">{children}</p>
+}
+
+// Replaces window.confirm(). Native confirm/alert/prompt dialogs are known
+// to leave some browsers (e.g. Arc) with the rest of the page unresponsive —
+// dropdowns and other controls stop reacting to clicks until a reload. This
+// renders an ordinary in-app modal instead, so nothing outside React's own
+// event handling is involved.
+// Usage: const [confirmDialog, askConfirm] = useConfirm(); ... {confirmDialog}
+// then: if (!(await askConfirm('Delete this?'))) return
+export function useConfirm() {
+  const [req, setReq] = useState(null) // { message, resolve }
+  const ask = useCallback((message) => new Promise((resolve) => setReq({ message, resolve })), [])
+  if (!req) return [null, ask]
+  const finish = (ok) => { req.resolve(ok); setReq(null) }
+  const dialog = (
+    <Modal title="Please confirm" onClose={() => finish(false)}>
+      <p className="text-sm text-stone-600">{req.message}</p>
+      <div className="mt-4 flex justify-end gap-2">
+        <button type="button" className={btnGhost} onClick={() => finish(false)}>Cancel</button>
+        <button type="button" className={btnDanger} onClick={() => finish(true)}>Delete</button>
+      </div>
+    </Modal>
+  )
+  return [dialog, ask]
+}
+
+// Replaces window.prompt(), for the same reason as useConfirm above.
+// Usage: const [promptDialog, askText] = usePrompt(); ... {promptDialog}
+// then: const text = await askText('Label text:')
+export function usePrompt() {
+  const [req, setReq] = useState(null) // { message, value, resolve }
+  const ask = useCallback((message, initial = '') => new Promise((resolve) => setReq({ message, value: initial, resolve })), [])
+  if (!req) return [null, ask]
+  const finish = (value) => { req.resolve(value); setReq(null) }
+  const dialog = (
+    <Modal title={req.message} onClose={() => finish(null)}>
+      <form
+        onSubmit={(e) => { e.preventDefault(); finish(req.value.trim() || null) }}
+        className="space-y-3"
+      >
+        <input autoFocus className={inputCls} value={req.value} onChange={(e) => setReq((r) => ({ ...r, value: e.target.value }))} />
+        <div className="flex justify-end gap-2">
+          <button type="button" className={btnGhost} onClick={() => finish(null)}>Cancel</button>
+          <button className={btnDark}>OK</button>
+        </div>
+      </form>
+    </Modal>
+  )
+  return [dialog, ask]
 }
 
 export function Modal({ title, onClose, children, wide = false }) {

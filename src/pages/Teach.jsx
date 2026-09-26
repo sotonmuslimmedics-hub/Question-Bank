@@ -7,13 +7,14 @@ import { pathOf, fetchAll } from '../lib/sections'
 import { deleteImage } from '../lib/images'
 import QuestionEditor from '../components/QuestionEditor'
 import SlideDialog from '../components/SlideDialog'
-import { PageHeader, Notice, Empty, Pill, Modal, btnDark, btnGhost, btnDanger, card } from '../components/ui'
+import { PageHeader, Notice, Empty, Pill, Modal, btnDark, btnGhost, btnDanger, card, useConfirm } from '../components/ui'
 
 // Student-teacher workspace. Everything here is limited to the signed-in person's own questions.
 export default function Teach() {
   const { user } = useAuth()
   const sec = useSections()
   const sub = useSubjects()
+  const [confirmDialog, askConfirm] = useConfirm()
   const [rows, setRows] = useState(null)
   const [error, setError] = useState('')
   const [editing, setEditing] = useState(null) // question | {} for new
@@ -38,7 +39,8 @@ export default function Teach() {
   useEffect(() => { load() }, [])
 
   async function remove(q) {
-    if (!confirm('Delete this draft? This cannot be undone.')) return
+    const ok = await askConfirm('Delete this draft? This cannot be undone.')
+    if (!ok) return
     const { error } = await supabase.from('questions').delete().eq('id', q.id)
     if (error) return setError(error.message)
     if (q.image_path) await deleteImage(q.image_path)
@@ -106,6 +108,7 @@ export default function Teach() {
         </Modal>
       )}
       {slides && <SlideDialog ids={[...picked]} nodes={sec.nodes} onClose={() => setSlides(false)} />}
+      {confirmDialog}
     </div>
   )
 }
