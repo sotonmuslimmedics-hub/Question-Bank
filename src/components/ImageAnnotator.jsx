@@ -8,6 +8,10 @@ const TOOLS = [
   ['text', 'T', 'Text'],
 ]
 const COLORS = ['#ef4444', '#facc15', '#3b82f6', '#18181b', '#ffffff']
+// Large pasted images (e.g. retina screenshots) can exceed the canvas pixel
+// limits some mobile browsers allow, which blanks the whole page instead of
+// erroring. Cap the working canvas to a safe max dimension.
+const MAX_DIM = 2000
 
 // Draws one committed shape (or the in-progress one) onto the canvas.
 function drawShape(ctx, shape, lineWidth) {
@@ -88,8 +92,9 @@ export default function ImageAnnotator({ src, onDone, onCancel }) {
     img.onload = () => {
       imgRef.current = img
       const canvas = canvasRef.current
-      canvas.width = img.naturalWidth
-      canvas.height = img.naturalHeight
+      const scale = Math.min(1, MAX_DIM / Math.max(img.naturalWidth, img.naturalHeight))
+      canvas.width = Math.round(img.naturalWidth * scale)
+      canvas.height = Math.round(img.naturalHeight * scale)
       setReady(true)
     }
     img.src = src
