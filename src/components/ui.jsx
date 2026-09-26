@@ -89,18 +89,26 @@ export function usePrompt() {
   const ask = useCallback((message, initial = '') => new Promise((resolve) => setReq({ message, value: initial, resolve })), [])
   if (!req) return [null, ask]
   const finish = (value) => { req.resolve(value); setReq(null) }
+  const submit = () => finish(req.value.trim() || null)
   const dialog = (
     <Modal title={req.message} onClose={() => finish(null)}>
-      <form
-        onSubmit={(e) => { e.preventDefault(); finish(req.value.trim() || null) }}
-        className="space-y-3"
-      >
-        <input autoFocus className={inputCls} value={req.value} onChange={(e) => setReq((r) => ({ ...r, value: e.target.value }))} />
+      {/* Not a <form>: this can be opened from inside another form (e.g. the
+          question editor), and a nested <form> is invalid HTML — the browser
+          collapses it into the outer one, so an OK button here would end up
+          submitting that outer form instead of just closing this dialog. */}
+      <div className="space-y-3">
+        <input
+          autoFocus
+          className={inputCls}
+          value={req.value}
+          onChange={(e) => setReq((r) => ({ ...r, value: e.target.value }))}
+          onKeyDown={(e) => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') finish(null) }}
+        />
         <div className="flex justify-end gap-2">
           <button type="button" className={btnGhost} onClick={() => finish(null)}>Cancel</button>
-          <button className={btnDark}>OK</button>
+          <button type="button" className={btnDark} onClick={submit}>OK</button>
         </div>
-      </form>
+      </div>
     </Modal>
   )
   return [dialog, ask]
@@ -118,7 +126,7 @@ export function Modal({ title, onClose, children, wide = false }) {
       >
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-bold">{title}</h2>
-          <button onClick={onClose} className="rounded-lg px-2 py-1 text-stone-400 hover:bg-stone-100" aria-label="Close">✕</button>
+          <button type="button" onClick={onClose} className="rounded-lg px-2 py-1 text-stone-400 hover:bg-stone-100" aria-label="Close">✕</button>
         </div>
         {children}
       </div>
