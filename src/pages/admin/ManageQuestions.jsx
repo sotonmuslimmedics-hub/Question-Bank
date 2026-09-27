@@ -112,7 +112,23 @@ export default function ManageQuestions() {
         <input className={inputCls} placeholder="Search text" value={f.q} onChange={(e) => setF({ ...f, q: e.target.value })} />
       </div>
 
-      <p className="mb-2 text-xs text-stone-500">{total} question{total === 1 ? '' : 's'}</p>
+      <div className="mb-2 flex items-center gap-2 text-xs text-stone-500">
+        {rows.length > 0 && (
+          <input
+            type="checkbox"
+            className="h-4 w-4 shrink-0 accent-brand-600"
+            checked={rows.every((r) => picked.has(r.id))}
+            onChange={() => setPicked((p) => {
+              const allChecked = rows.every((r) => picked.has(r.id))
+              const n = new Set(p)
+              rows.forEach((r) => (allChecked ? n.delete(r.id) : n.add(r.id)))
+              return n
+            })}
+            aria-label="Select all loaded"
+          />
+        )}
+        <span>{total} question{total === 1 ? '' : 's'}{rows.length > 0 ? ` (select all to pick the ${rows.length} shown${rows.length < total ? ' — load more first for the rest' : ''})` : ''}</span>
+      </div>
       {!loading && !rows.length && <Empty>No questions match.</Empty>}
       <div className="divide-y divide-stone-100 rounded-2xl border border-stone-200 bg-white">
         {rows.map((q) => (
