@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useSections } from '../../lib/useSections'
 import { useSubjects } from '../../lib/useSubjects'
@@ -25,8 +25,15 @@ export default function ManageQuestions() {
   const [slides, setSlides] = useState(false)
   const [moveTo, setMoveTo] = useState(null) // string | null
 
+  // Guards against out-of-order responses: publishing/deleting/moving all
+  // trigger an immediate reload, and a filter change shortly after triggers
+  // its own (debounced) reload. Without this, whichever request happened to
+  // resolve last would win — even if it was the older, differently-filtered
+  // one — making the list look "stuck" and unresponsive to the filters.
+  const loadSeq = useRef(0)
   const load = useCallback(
     async (append = false, from = 0) => {
+      const seq = ++loadSeq.current
       setLoading(true)
       let query = supabase
         .from('questions')
@@ -40,6 +47,7 @@ export default function ManageQuestions() {
       if (f.type !== 'all') query = query.eq('question_type', f.type)
       if (f.q.trim()) query = query.ilike('stem', `%${f.q.trim().replace(/[%,]/g, ' ')}%`)
       const { data, count, error } = await query
+      if (seq !== loadSeq.current) return // a newer load was issued meanwhile; drop this stale response
       if (error) setMsg({ text: error.message, tone: 'error' })
       setRows((r) => (append ? [...r, ...(data || [])] : data || []))
       setTotal(count || 0)
