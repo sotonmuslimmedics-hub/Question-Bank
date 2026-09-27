@@ -48,7 +48,9 @@ export default function Practice() {
         const openCounts = Object.fromEntries(Object.entries(c).filter(([id]) => !t.nodes.get(id)?.effectiveLocked))
         addTotals(t.roots, openCounts, progress)
         setTree(t)
-        setOpen((prev) => (prev.size ? prev : new Set(t.roots.map((r) => r.id))))
+        // Left collapsed by default (`open` starts empty) — expanding every
+        // top-level year/module up front made the list long and busy before
+        // you'd even chosen anything.
         // a topic that no longer has questions in the chosen subject shouldn't stay selected
         setPicked((prev) => new Set([...prev].filter((id) => (t.nodes.get(id)?.ownCount || 0) > 0)))
       } catch (e) {
