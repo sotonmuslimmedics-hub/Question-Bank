@@ -1,12 +1,18 @@
 import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { useAuth } from '../../lib/auth'
 import { useSections } from '../../lib/useSections'
 import { descendantIds } from '../../lib/sections'
 import { PageHeader, Notice, Modal, inputCls, btnDark, btnGhost, btnDanger, Pill, useConfirm } from '../../components/ui'
 
 // Any depth, any names. Levels aren't fixed: a committee can use Year > Module > Topic, or add/skip levels.
+// Leads can add, rename, move, lock/unlock and hide/show sections (e.g. to
+// set up and release a mock exam's section themselves). Deleting a section
+// is the one action still admin-only, since it's the one that isn't easily
+// undone — everything else here can just be redone or reverted.
 export default function Structure() {
   const sec = useSections()
+  const { isAdmin } = useAuth()
   const [confirmDialog, askConfirm] = useConfirm()
   const [msg, setMsg] = useState({ text: '', tone: 'ok' })
   const [dlg, setDlg] = useState(null) // {kind:'add'|'rename'|'move', node?}
@@ -97,7 +103,7 @@ export default function Structure() {
             <button type="button" className={btnGhost} onClick={() => { setParent(n.parent_id || ''); setDlg({ kind: 'move', node: n }) }}>Move</button>
             <button type="button" className={btnGhost} onClick={() => run(supabase.from('sections').update({ is_locked: !n.is_locked }).eq('id', n.id))}>{n.is_locked ? 'Unlock' : 'Lock'}</button>
             <button type="button" className={btnGhost} onClick={() => run(supabase.from('sections').update({ is_hidden: !n.is_hidden }).eq('id', n.id))}>{n.is_hidden ? 'Show' : 'Hide'}</button>
-            <button type="button" className={btnDanger} onClick={() => del(n)}>Delete</button>
+            {isAdmin && <button type="button" className={btnDanger} onClick={() => del(n)}>Delete</button>}
           </div>
         </div>
         {n.children.length > 0 && <ul>{n.children.map((c) => <Row key={c.id} n={c} depth={depth + 1} />)}</ul>}
@@ -110,7 +116,7 @@ export default function Structure() {
   return (
     <div>
       <PageHeader title="Structure" actions={<button className={btnDark} onClick={() => { setName(''); setDlg({ kind: 'add' }) }}>Add top-level section</button>}>
-        Shape the syllabus however you like: rename things, add levels, reorder, or move a topic to another module. Locked sections show as "coming soon". Hidden ones disappear for students.
+        Shape the syllabus however you like: rename things, add levels, reorder, or move a topic to another module. Locked sections show as "coming soon". Hidden ones disappear for students.{!isAdmin && ' Deleting a section is admin-only — ask a committee admin if you need one removed.'}
       </PageHeader>
       <Notice tone={msg.tone} onClose={() => setMsg({ text: '' })}>{msg.text}</Notice>
       <Notice tone="error">{sec.error}</Notice>

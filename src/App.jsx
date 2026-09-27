@@ -41,7 +41,7 @@ export default function App() {
         <Route path="portfolio" element={<Gate min="teacher"><Portfolio /></Gate>} />
         <Route path="manage/questions" element={<Gate min="lead"><ManageQuestions /></Gate>} />
         <Route path="manage/teaching" element={<Gate min="lead"><Teaching /></Gate>} />
-        <Route path="manage/structure" element={<Gate min="admin"><Structure /></Gate>} />
+        <Route path="manage/structure" element={<Gate min="lead"><Structure /></Gate>} />
         <Route path="manage/subjects" element={<Gate min="admin"><Subjects /></Gate>} />
         <Route path="manage/people" element={<Gate min="admin"><People /></Gate>} />
         <Route path="manage/tools" element={<Gate min="admin"><Tools /></Gate>} />

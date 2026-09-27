@@ -19,9 +19,9 @@ function useNav() {
   if (isLead) {
     items.push({ to: '/manage/questions', label: 'Questions', icon: '?', group: 'Manage' })
     items.push({ to: '/manage/teaching', label: 'Teaching sessions', icon: '☑', group: 'Manage' })
+    items.push({ to: '/manage/structure', label: 'Structure', icon: '⌥', group: 'Manage' })
   }
   if (isAdmin) {
-    items.push({ to: '/manage/structure', label: 'Structure', icon: '⌥', group: 'Manage' })
     items.push({ to: '/manage/subjects', label: 'Subjects', icon: '§', group: 'Manage' })
     items.push({ to: '/manage/people', label: 'People', icon: '☺', group: 'Manage' })
     items.push({ to: '/manage/tools', label: 'Tools', icon: '⚙', group: 'Manage' })
