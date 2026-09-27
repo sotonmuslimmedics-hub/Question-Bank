@@ -3,6 +3,7 @@ import { useAuth } from './lib/auth'
 import Layout from './components/Layout'
 import Login from './pages/Login'
 import ResetPassword from './pages/ResetPassword'
+import ConfirmEmail from './pages/ConfirmEmail'
 import Home from './pages/Home'
 import Practice from './pages/Practice'
 import Quiz from './pages/Quiz'
@@ -30,6 +31,7 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/auth/confirm" element={<ConfirmEmail />} />
       <Route element={<Gate><Layout /></Gate>}>
         <Route index element={<Home />} />
         <Route path="practice" element={<Practice />} />
