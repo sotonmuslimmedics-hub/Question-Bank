@@ -67,7 +67,19 @@ export default function Structure() {
   async function del(n) {
     const ok = await askConfirm(`Delete "${n.name}"${n.children.length ? ' and everything under it' : ''}? This is blocked while any questions are inside.`)
     if (!ok) return
-    run(supabase.from('sections').delete().eq('id', n.id), 'Deleted')
+    const { error } = await supabase.from('sections').delete().eq('id', n.id)
+    if (error) {
+      // Postgres foreign-key violation: the section (or a child of it) still
+      // has questions pointing at it. The raw message ("update or delete on
+      // table "sections" violates foreign key constraint...") means nothing
+      // to a non-technical reader, so translate it.
+      if (error.code === '23503') {
+        return fail(new Error(`Can't delete "${n.name}" — it${n.children.length ? ', or something inside it,' : ''} still has questions in it. Move or delete those questions first, then try again.`))
+      }
+      return fail(error)
+    }
+    setMsg({ text: 'Deleted', tone: 'ok' })
+    await reloadKeepScroll()
   }
 
   function Row({ n, depth }) {
