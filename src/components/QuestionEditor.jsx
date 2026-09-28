@@ -27,11 +27,17 @@ export default function QuestionEditor({ initial, sections, subjects, canPublish
   const [file, setFile] = useState(null)
   const [preview, setPreview] = useState(null)
   const [removeImage, setRemoveImage] = useState(false)
+  const [explFile, setExplFile] = useState(null)
+  const [explPreview, setExplPreview] = useState(null)
+  const [removeExplImage, setRemoveExplImage] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [drag, setDrag] = useState(false)
+  const [explDrag, setExplDrag] = useState(false)
   const [annotating, setAnnotating] = useState(false)
+  const [explAnnotating, setExplAnnotating] = useState(false)
   const inputRef = useRef(null)
+  const explInputRef = useRef(null)
 
   const setPicked = (f) => {
     if (!f) return
@@ -45,7 +51,22 @@ export default function QuestionEditor({ initial, sections, subjects, canPublish
     })
   }
 
-  // Ctrl/Cmd+V anywhere in the editor pastes a copied or screenshotted image.
+  const setExplPicked = (f) => {
+    if (!f) return
+    if (!f.type.startsWith('image/')) return setError('That is not an image.')
+    setError('')
+    setExplFile(f)
+    setRemoveExplImage(false)
+    setExplPreview((old) => {
+      if (old) URL.revokeObjectURL(old)
+      return URL.createObjectURL(f)
+    })
+  }
+
+  // Ctrl/Cmd+V anywhere in the editor pastes a copied or screenshotted image
+  // as the station photo. The explanation image has its own paste handler
+  // (below, on its textarea) which stops the event reaching this one, so
+  // pasting while your cursor is in the explanation box goes there instead.
   useEffect(() => {
     if (type !== 'station') return
     const onPaste = (e) => {
@@ -59,7 +80,17 @@ export default function QuestionEditor({ initial, sections, subjects, canPublish
     return () => document.removeEventListener('paste', onPaste)
   }, [type])
 
+  function onExplanationPaste(e) {
+    const item = [...(e.clipboardData?.items || [])].find((i) => i.type.startsWith('image/'))
+    if (item) {
+      e.preventDefault()
+      e.stopPropagation()
+      setExplPicked(item.getAsFile())
+    }
+  }
+
   const shownImage = removeImage ? null : preview || imageUrl(q.image_path)
+  const shownExplImage = removeExplImage ? null : explPreview || imageUrl(q.explanation_image_path)
 
   // Only a freshly pasted/dropped/chosen image (still a local blob) can be marked up —
   // an already-uploaded photo would need re-adding first, to keep the canvas same-origin.
@@ -67,6 +98,12 @@ export default function QuestionEditor({ initial, sections, subjects, canPublish
     const f = new File([blob], file?.name || 'annotated.png', { type: 'image/png' })
     setPicked(f)
     setAnnotating(false)
+  }
+
+  function onExplAnnotated(blob) {
+    const f = new File([blob], explFile?.name || 'annotated.png', { type: 'image/png' })
+    setExplPicked(f)
+    setExplAnnotating(false)
   }
 
   async function save(e) {
@@ -89,8 +126,10 @@ export default function QuestionEditor({ initial, sections, subjects, canPublish
     }
     setBusy(true)
     let newPath = null
+    let newExplPath = null
     try {
       if (type === 'station' && file) newPath = await uploadImage(file)
+      if (explFile) newExplPath = await uploadImage(explFile)
       let opts = null
       let corr = null
       if (type === 'mcq') {
@@ -100,6 +139,7 @@ export default function QuestionEditor({ initial, sections, subjects, canPublish
         corr = keep.findIndex((x) => x.i === correct)
       }
       const imagePath = type === 'station' ? (newPath ?? (removeImage ? null : q.image_path ?? null)) : null
+      const explanationImagePath = newExplPath ?? (removeExplImage ? null : q.explanation_image_path ?? null)
       const row = {
         section_id: sectionId,
         subject_id: subjectId,
@@ -108,6 +148,7 @@ export default function QuestionEditor({ initial, sections, subjects, canPublish
         options: opts,
         correct_option: corr,
         explanation: explanation.trim() || null,
+        explanation_image_path: explanationImagePath,
         difficulty: difficulty ? Number(difficulty) : null,
         image_path: imagePath,
         is_published: canPublish ? published : false,
@@ -130,9 +171,11 @@ export default function QuestionEditor({ initial, sections, subjects, canPublish
       }
       // tidy storage: remove the previous photo if it was replaced or removed
       if (q.image_path && q.image_path !== imagePath) await deleteImage(q.image_path)
+      if (q.explanation_image_path && q.explanation_image_path !== explanationImagePath) await deleteImage(q.explanation_image_path)
       onSaved(id)
     } catch (err) {
       if (newPath) await deleteImage(newPath)
+      if (newExplPath) await deleteImage(newExplPath)
       setError(err.message || 'Could not save.')
     } finally {
       setBusy(false)
@@ -246,10 +289,39 @@ export default function QuestionEditor({ initial, sections, subjects, canPublish
         </div>
       )}
 
-      <label className="block text-sm font-medium">
-        Explanation <span className="font-normal text-stone-400">(shown after answering)</span>
-        <textarea className={`${inputCls} mt-1`} rows={3} value={explanation} onChange={(e) => setExplanation(e.target.value)} />
-      </label>
+      <div>
+        <label className="block text-sm font-medium">
+          Explanation <span className="font-normal text-stone-400">(shown after answering)</span>
+          <textarea className={`${inputCls} mt-1`} rows={3} value={explanation} onChange={(e) => setExplanation(e.target.value)} onPaste={onExplanationPaste} />
+        </label>
+        <div
+          onDragOver={(e) => { e.preventDefault(); setExplDrag(true) }}
+          onDragLeave={() => setExplDrag(false)}
+          onDrop={(e) => { e.preventDefault(); setExplDrag(false); setExplPicked(e.dataTransfer.files?.[0]) }}
+          className={`mt-2 rounded-2xl border-2 border-dashed p-4 text-center text-sm ${explDrag ? 'border-brand-500 bg-brand-50' : 'border-stone-300'}`}
+        >
+          {shownExplImage ? (
+            <img src={shownExplImage} alt="Explanation" className="mx-auto max-h-64 rounded-xl" />
+          ) : (
+            <p className="text-stone-500">
+              Optional picture for the explanation — e.g. a labelled X-ray. Click into the explanation box above and
+              press <kbd className="rounded border bg-stone-100 px-1">Ctrl</kbd>/<kbd className="rounded border bg-stone-100 px-1">⌘</kbd> + <kbd className="rounded border bg-stone-100 px-1">V</kbd> to paste, or drop a file here.
+            </p>
+          )}
+          <div className="mt-3 flex justify-center gap-2">
+            <button type="button" className={btnGhost} onClick={() => explInputRef.current?.click()}>Choose file</button>
+            {explPreview && <button type="button" className={btnGhost} onClick={() => setExplAnnotating(true)}>Label image</button>}
+            {shownExplImage && <button type="button" className={btnGhost} onClick={() => { setExplFile(null); setExplPreview(null); setRemoveExplImage(true) }}>Remove</button>}
+          </div>
+          <input ref={explInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => setExplPicked(e.target.files?.[0])} />
+        </div>
+      </div>
+
+      {explAnnotating && (
+        <Modal title="Label the explanation image" onClose={() => setExplAnnotating(false)} wide>
+          <ImageAnnotator src={explPreview} onDone={onExplAnnotated} onCancel={() => setExplAnnotating(false)} />
+        </Modal>
+      )}
 
       <div className="flex flex-wrap items-center gap-4">
         <label className="text-sm font-medium">

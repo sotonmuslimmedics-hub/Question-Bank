@@ -45,7 +45,7 @@ export default function Quiz() {
           fetchAll(() => {
             let q = supabase
               .from('questions')
-              .select('id,stem,options,correct_option,explanation,section_id,question_type,image_path,author_name,difficulty,question_parts(id,part_number,prompt,accepted_answers)')
+              .select('id,stem,options,correct_option,explanation,explanation_image_path,section_id,question_type,image_path,author_name,difficulty,question_parts(id,part_number,prompt,accepted_answers)')
               .in('section_id', sectionIds)
               .eq('is_published', true)
             if (subjectIds.length) q = q.in('subject_id', subjectIds)
@@ -227,13 +227,13 @@ export default function Quiz() {
           <div className={`font-bold ${chosen === q.correct_option ? 'text-emerald-700' : 'text-red-700'}`}>
             {chosen === q.correct_option ? 'Correct' : `Not quite. The answer is ${LETTERS[q.correct_option]}.`}
           </div>
-          {q.explanation && <Explanation text={q.explanation} />}
+          {(q.explanation || q.explanation_image_path) && <Explanation text={q.explanation} imagePath={q.explanation_image_path} />}
         </div>
       )}
       {isStation && checked && (
         <div className={`mt-4 rounded-2xl border p-4 ${allRight ? 'border-emerald-200 bg-emerald-50' : 'border-stone-200 bg-white'}`}>
           <div className="font-bold">{marks.filter(Boolean).length} of {marks.length} correct</div>
-          {q.explanation && <Explanation text={q.explanation} />}
+          {(q.explanation || q.explanation_image_path) && <Explanation text={q.explanation} imagePath={q.explanation_image_path} />}
         </div>
       )}
 
@@ -255,11 +255,12 @@ export default function Quiz() {
   )
 }
 
-function Explanation({ text }) {
+function Explanation({ text, imagePath }) {
   return (
     <div className="mt-3 rounded-xl bg-white p-3 text-sm leading-relaxed">
       <div className="mb-1 text-xs font-bold uppercase tracking-wide text-stone-400">Why</div>
       {text}
+      {imagePath && <img src={imageUrl(imagePath)} alt="Explanation" className="mx-auto mt-3 max-h-[28rem] w-auto max-w-full rounded-xl border border-stone-200" />}
     </div>
   )
 }
