@@ -59,6 +59,19 @@ export default function Announcements() {
   const [rows, setRows] = useState(null)
   const [error, setError] = useState('')
   const [edit, setEdit] = useState(null) // {id?, title, body, pinned}
+  const [linkForm, setLinkForm] = useState(null) // {text, url, pos}
+  const bodyRef = useRef(null)
+
+  function insertLink() {
+    const text = linkForm.text.trim()
+    let url = linkForm.url.trim()
+    if (!text || !url) return
+    if (!/^https?:\/\//.test(url)) url = `https://${url}` // leads often paste without the https://
+    const md = `[${text}](${url})`
+    const pos = linkForm.pos
+    setEdit((e) => ({ ...e, body: e.body.slice(0, pos) + md + e.body.slice(pos) }))
+    setLinkForm(null)
+  }
   // Snapshot the "last seen" cutoff the moment we have it, so marking things seen
   // (which resets it to now) doesn't make the highlight disappear mid-visit.
   const seenAtRef = useRef(null)
@@ -133,16 +146,50 @@ export default function Announcements() {
         <Modal title={edit.id ? 'Edit announcement' : 'New announcement'} onClose={() => setEdit(null)}>
           <form onSubmit={save} className="space-y-3">
             <input className={inputCls} placeholder="Title" value={edit.title} onChange={(e) => setEdit({ ...edit, title: e.target.value })} required maxLength={120} />
-            <textarea className={inputCls} rows={6} placeholder="What do people need to know?" value={edit.body} onChange={(e) => setEdit({ ...edit, body: e.target.value })} required />
-            <p className="text-xs text-stone-400">
-              A pasted link becomes clickable automatically. For a custom label, write <code className="rounded bg-stone-100 px-1">[Google Drive folder](https://...)</code>.
-              Use <code className="rounded bg-stone-100 px-1">**text**</code> for bold, e.g. a heading before a link.
-            </p>
+            <textarea ref={bodyRef} className={inputCls} rows={6} placeholder="What do people need to know?" value={edit.body} onChange={(e) => setEdit({ ...edit, body: e.target.value })} required />
+            <div className="flex items-center justify-between">
+              <button
+                type="button"
+                className={btnGhost}
+                onClick={() => setLinkForm({ text: '', url: '', pos: bodyRef.current?.selectionStart ?? edit.body.length })}
+              >
+                + Insert link
+              </button>
+              <p className="text-xs text-stone-400">A pasted link becomes clickable automatically too.</p>
+            </div>
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={!!edit.pinned} onChange={(e) => setEdit({ ...edit, pinned: e.target.checked })} /> Pin to the top
             </label>
             <button className={`${btnDark} w-full`}>Save</button>
           </form>
+        </Modal>
+      )}
+      {linkForm && (
+        <Modal title="Insert link" onClose={() => setLinkForm(null)}>
+          <div className="space-y-3">
+            <label className="block text-sm font-medium">
+              Link text <span className="font-normal text-stone-400">(what people see, e.g. "Google Drive folder")</span>
+              <input
+                className={`${inputCls} mt-1`}
+                autoFocus
+                value={linkForm.text}
+                onChange={(e) => setLinkForm({ ...linkForm, text: e.target.value })}
+              />
+            </label>
+            <label className="block text-sm font-medium">
+              URL
+              <input
+                className={`${inputCls} mt-1`}
+                placeholder="https://…"
+                value={linkForm.url}
+                onChange={(e) => setLinkForm({ ...linkForm, url: e.target.value })}
+                onKeyDown={(e) => e.key === 'Enter' && insertLink()}
+              />
+            </label>
+            <button type="button" className={`${btnDark} w-full`} disabled={!linkForm.text.trim() || !linkForm.url.trim()} onClick={insertLink}>
+              Insert
+            </button>
+          </div>
         </Modal>
       )}
       {confirmDialog}
