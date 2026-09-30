@@ -8,28 +8,44 @@ export function fmtDate(d) {
   return new Date(d).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-// Turns any http(s)/www. URL typed into an announcement (e.g. a link to the
-// committee's Google Drive) into a tappable link, without allowing HTML —
-// leads just paste a plain URL and it becomes clickable automatically.
+// Lightweight formatting for announcements, without allowing arbitrary HTML:
+//  - [link text](https://...)  -> a link with a friendly label, e.g. for a
+//    tidy resource list ("Google Drive: Google Drive folder")
+//  - **bold**                  -> emphasis, e.g. for a label before a link
+//  - a bare http(s)/www. URL   -> auto-linked as-is, so pasting a plain link
+//    still just works with no special syntax needed
 function linkify(text) {
-  const re = /(https?:\/\/[^\s]+|www\.[^\s]+)/g
+  const re = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|\*\*([^*]+)\*\*|(https?:\/\/[^\s]+|www\.[^\s]+)/g
   const nodes = []
   let lastIndex = 0
   let m
   let key = 0
   while ((m = re.exec(text))) {
     if (m.index > lastIndex) nodes.push(text.slice(lastIndex, m.index))
-    let url = m[0]
-    // trailing punctuation is usually sentence punctuation, not part of the link
-    const trailing = url.match(/[).,;:!?\]]+$/)?.[0] || ''
-    if (trailing) url = url.slice(0, -trailing.length)
-    const href = url.startsWith('www.') ? `https://${url}` : url
-    nodes.push(
-      <a key={key++} href={href} target="_blank" rel="noopener noreferrer" className="text-brand-700 underline break-all">
-        {url}
-      </a>,
-    )
-    if (trailing) nodes.push(trailing)
+    if (m[1] !== undefined) {
+      // [label](url)
+      nodes.push(
+        <a key={key++} href={m[2]} target="_blank" rel="noopener noreferrer" className="text-brand-700 underline break-all">
+          {m[1]}
+        </a>,
+      )
+    } else if (m[3] !== undefined) {
+      // **bold**
+      nodes.push(<strong key={key++}>{m[3]}</strong>)
+    } else {
+      // bare URL
+      let url = m[4]
+      // trailing punctuation is usually sentence punctuation, not part of the link
+      const trailing = url.match(/[).,;:!?\]]+$/)?.[0] || ''
+      if (trailing) url = url.slice(0, -trailing.length)
+      const href = url.startsWith('www.') ? `https://${url}` : url
+      nodes.push(
+        <a key={key++} href={href} target="_blank" rel="noopener noreferrer" className="text-brand-700 underline break-all">
+          {url}
+        </a>,
+      )
+      if (trailing) nodes.push(trailing)
+    }
     lastIndex = m.index + m[0].length
   }
   if (lastIndex < text.length) nodes.push(text.slice(lastIndex))
@@ -118,7 +134,10 @@ export default function Announcements() {
           <form onSubmit={save} className="space-y-3">
             <input className={inputCls} placeholder="Title" value={edit.title} onChange={(e) => setEdit({ ...edit, title: e.target.value })} required maxLength={120} />
             <textarea className={inputCls} rows={6} placeholder="What do people need to know?" value={edit.body} onChange={(e) => setEdit({ ...edit, body: e.target.value })} required />
-            <p className="text-xs text-stone-400">Paste a link (e.g. your Google Drive) as plain text — it'll show up as a clickable link automatically.</p>
+            <p className="text-xs text-stone-400">
+              A pasted link becomes clickable automatically. For a custom label, write <code className="rounded bg-stone-100 px-1">[Google Drive folder](https://...)</code>.
+              Use <code className="rounded bg-stone-100 px-1">**text**</code> for bold, e.g. a heading before a link.
+            </p>
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={!!edit.pinned} onChange={(e) => setEdit({ ...edit, pinned: e.target.checked })} /> Pin to the top
             </label>
