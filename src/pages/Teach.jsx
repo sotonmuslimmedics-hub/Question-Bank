@@ -26,7 +26,7 @@ export default function Teach() {
       const data = await fetchAll(() =>
         supabase
           .from('questions')
-          .select('id,stem,options,correct_option,explanation,section_id,subject_id,question_type,image_path,is_published,difficulty,created_at,question_parts(id,part_number,prompt,accepted_answers)')
+          .select('id,stem,options,correct_option,explanation,explanation_image_path,section_id,subject_id,question_type,image_path,is_published,difficulty,created_at,question_parts(id,part_number,prompt,accepted_answers)')
           .eq('created_by', user.id)
           .order('created_at', { ascending: false }),
       )

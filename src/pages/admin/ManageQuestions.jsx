@@ -54,7 +54,7 @@ export default function ManageQuestions() {
       setLoading(true)
       let query = supabase
         .from('questions')
-        .select('id,stem,options,correct_option,explanation,section_id,subject_id,question_type,image_path,is_published,difficulty,author_name,created_by,created_at,exam_tag,question_parts(id,part_number,prompt,accepted_answers)', { count: 'exact' })
+        .select('id,stem,options,correct_option,explanation,explanation_image_path,section_id,subject_id,question_type,image_path,is_published,difficulty,author_name,created_by,created_at,exam_tag,question_parts(id,part_number,prompt,accepted_answers)', { count: 'exact' })
         .order('created_at', { ascending: false })
         .range(from, from + PAGE - 1)
       if (f.section && sec.nodes.get(f.section)) query = query.in('section_id', descendantIds(sec.nodes.get(f.section)))
