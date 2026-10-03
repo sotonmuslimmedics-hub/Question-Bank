@@ -44,6 +44,7 @@ export default function Teach() {
     const { error } = await supabase.from('questions').delete().eq('id', q.id)
     if (error) return setError(error.message)
     if (q.image_path) await deleteImage(q.image_path)
+    if (q.explanation_image_path) await deleteImage(q.explanation_image_path)
     setPicked((p) => { const n = new Set(p); n.delete(q.id); return n })
     load()
   }

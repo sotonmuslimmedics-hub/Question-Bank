@@ -99,7 +99,7 @@ export default function ManageQuestions() {
   async function bulkDelete() {
     const ok = await askConfirm(`Delete ${ids.length} question${ids.length === 1 ? '' : 's'} and their photos? This cannot be undone.`)
     if (!ok) return
-    const imgs = rows.filter((r) => picked.has(r.id) && r.image_path).map((r) => r.image_path)
+    const imgs = rows.filter((r) => picked.has(r.id)).flatMap((r) => [r.image_path, r.explanation_image_path]).filter(Boolean)
     const { error } = await supabase.from('questions').delete().in('id', ids)
     if (error) return setMsg({ text: error.message, tone: 'error' })
     for (const p of imgs) await deleteImage(p)

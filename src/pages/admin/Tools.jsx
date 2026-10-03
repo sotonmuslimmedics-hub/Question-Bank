@@ -240,7 +240,8 @@ function Orphans() {
         files.push(...data.filter((f) => f.name && f.id))
         if (data.length < 1000) break
       }
-      const used = new Set((await fetchAll(() => supabase.from('questions').select('image_path').not('image_path', 'is', null).order('id'))).map((q) => q.image_path))
+      const rows = await fetchAll(() => supabase.from('questions').select('image_path,explanation_image_path').order('id'))
+      const used = new Set(rows.flatMap((q) => [q.image_path, q.explanation_image_path]).filter(Boolean))
       const list = files.map((f) => ({ path: `questions/${f.name}`, size: f.metadata?.size || 0 })).filter((f) => !used.has(f.path))
       setOrphans(list)
       if (!list.length) setMsg({ text: `Checked ${files.length} photos. None are orphaned.`, tone: 'ok' })
