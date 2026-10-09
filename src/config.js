@@ -1,6 +1,6 @@
 // Names shown around the site. Change them here.
 export const SITE_NAME = 'MMS Question Bank'
-export const SITE_TAGLINE = 'Revise by topic, practise practicals, learn from near-peer teachers.'
+export const SITE_TAGLINE = 'Revise by topic, practise practicals, learn from student teachers.'
 export const SHORT_NAME = 'MMS'
 
 // Roles, lowest to highest. The database enforces what each can do.
