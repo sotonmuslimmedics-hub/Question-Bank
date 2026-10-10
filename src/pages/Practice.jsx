@@ -5,6 +5,14 @@ import { useSubjects } from '../lib/useSubjects'
 import { buildTree, markLocks, addTotals, practisableIds, fetchAll } from '../lib/sections'
 import { PageHeader, Notice, btnDark, btnGhost, inputCls, Empty } from '../components/ui'
 
+const MODES = [
+  { value: 'all', label: 'All questions', help: 'Everything in the topics you tick, including ones you have done before.' },
+  { value: 'new', label: 'New only', help: "Leaves out anything you've already answered, so newly released questions aren't mixed in with ones you've done." },
+  { value: 'missed', label: 'Missed only', help: 'Only questions you got wrong the last time you answered them.' },
+  { value: 'both', label: 'New + missed', help: "Questions you haven't answered yet, plus any you got wrong last time." },
+]
+const MODE_WORD = { new: 'new', missed: 'missed', both: 'to do' }
+
 export default function Practice() {
   const nav = useNavigate()
   const sub = useSubjects()
@@ -16,7 +24,8 @@ export default function Practice() {
   const [picked, setPicked] = useState(new Set())
   const [open, setOpen] = useState(new Set())
   const [limit, setLimit] = useState('')
-  const [onlyNew, setOnlyNew] = useState(false) // leave out questions this student has already answered
+  // Which questions to draw from: everything, ones never answered, ones whose latest attempt was wrong, or either.
+  const [mode, setMode] = useState('all') // 'all' | 'new' | 'missed' | 'both'
 
   // Sections and the student's all-time progress only need loading once.
   useEffect(() => {
@@ -40,9 +49,12 @@ export default function Practice() {
     if (!sectionRows) return
     ;(async () => {
       try {
-        // With "new only" on, the counts are of questions not yet answered, so
-        // topics with nothing new left can't be ticked and the total is honest.
-        const counts = await supabase.rpc(onlyNew ? 'section_unseen_counts' : 'section_question_counts', { p_subjects: subjects.size ? [...subjects] : null })
+        // In a filtered mode the counts are of just the questions that match, so
+        // topics with nothing left can't be ticked and the total is honest.
+        const p_subjects = subjects.size ? [...subjects] : null
+        const counts = mode === 'all'
+          ? await supabase.rpc('section_question_counts', { p_subjects })
+          : await supabase.rpc('section_filtered_counts', { p_mode: mode, p_subjects })
         if (counts.error) throw counts.error
         const c = Object.fromEntries((counts.data || []).map((r) => [r.section_id, Number(r.question_count)]))
         const t = buildTree(sectionRows)
@@ -61,7 +73,7 @@ export default function Practice() {
       }
     })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sectionRows, progress, subjectKey, onlyNew])
+  }, [sectionRows, progress, subjectKey, mode])
 
   const selectedTotal = useMemo(() => {
     if (!tree) return 0
@@ -85,7 +97,7 @@ export default function Practice() {
     const q = new URLSearchParams({ s: [...picked].join(',') })
     if (Number(limit) > 0) q.set('n', String(Number(limit)))
     if (subjects.size) q.set('subject', [...subjects].join(','))
-    if (onlyNew) q.set('new', '1')
+    if (mode !== 'all') q.set('mode', mode)
     nav(`/quiz?${q}`)
   }
 
@@ -139,7 +151,7 @@ export default function Practice() {
             </span>
           </button>
           <span className="shrink-0 text-xs tabular-nums text-stone-400">
-            {locked ? 'coming soon' : onlyNew ? (node.totalCount ? `${node.totalCount} new` : 'all done') : node.totalCount ? `${node.totalDone}/${node.totalCount}` : ''}
+            {locked ? 'coming soon' : mode !== 'all' ? (node.totalCount ? `${node.totalCount} ${MODE_WORD[mode]}` : 'none') : node.totalCount ? `${node.totalDone}/${node.totalCount}` : ''}
           </span>
         </div>
         {hasKids && open.has(node.id) && (
@@ -184,13 +196,24 @@ export default function Practice() {
           {subjects.size === 0 && <p className="mt-2 text-xs text-stone-400">Any subject — pick one or more to narrow it down.</p>}
         </div>
       )}
-      <label className="mb-4 flex cursor-pointer items-start gap-3 rounded-2xl border border-stone-200 bg-white p-3">
-        <input type="checkbox" className="mt-0.5 h-5 w-5 shrink-0 accent-brand-600" checked={onlyNew} onChange={(e) => setOnlyNew(e.target.checked)} />
-        <span className="text-sm">
-          <span className="font-medium">New questions only</span>
-          <span className="block text-xs text-stone-400">Leave out anything you've already answered, so newly released questions aren't mixed in with ones you've done.</span>
-        </span>
-      </label>
+      <div className="mb-4 rounded-2xl border border-stone-200 bg-white p-3">
+        <span className="text-sm font-medium">Which questions?</span>
+        <div className="mt-2 flex flex-wrap gap-2" role="radiogroup" aria-label="Which questions">
+          {MODES.map((m) => (
+            <button
+              key={m.value}
+              type="button"
+              role="radio"
+              aria-checked={mode === m.value}
+              onClick={() => setMode(m.value)}
+              className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${mode === m.value ? 'border-brand-600 bg-brand-600 text-white' : 'border-stone-300 bg-white text-stone-600 hover:bg-stone-50'}`}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+        <p className="mt-2 text-xs text-stone-400">{MODES.find((m) => m.value === mode).help}</p>
+      </div>
       {!tree && !error && <p className="text-sm text-stone-400">Loading…</p>}
       {tree && tree.roots.length === 0 && <Empty>Nothing here yet.</Empty>}
       {tree && (

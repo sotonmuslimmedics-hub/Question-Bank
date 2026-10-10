@@ -23,7 +23,7 @@ export default function Quiz() {
   const sectionIds = useMemo(() => (params.get('s') || '').split(',').filter(Boolean), [params])
   const limit = Number(params.get('n')) || 0
   const subjectIds = useMemo(() => (params.get('subject') || '').split(',').filter(Boolean), [params])
-  const onlyNew = params.get('new') === '1'
+  const mode = ['new', 'missed', 'both'].includes(params.get('mode')) ? params.get('mode') : 'all'
   const [questions, setQuestions] = useState([])
   const [paths, setPaths] = useState(new Map())
   const [index, setIndex] = useState(0)
@@ -58,12 +58,19 @@ export default function Quiz() {
           ...q,
           question_parts: [...(q.question_parts || [])].sort((a, b) => a.part_number - b.part_number),
         }))
-        if (onlyNew) {
-          // drop anything already answered *before* the "how many?" cut-off, so 10 means 10 new ones
-          const seen = await supabase.rpc('my_answered_question_ids')
+        if (mode !== 'all') {
+          // filter *before* the "how many?" cut-off, so 10 means 10 matching questions
+          const [seen, missed] = await Promise.all([
+            mode === 'missed' ? { data: [] } : supabase.rpc('my_answered_question_ids'),
+            mode === 'new' ? { data: [] } : supabase.rpc('my_missed_question_ids'),
+          ])
           if (seen.error) throw seen.error
+          if (missed.error) throw missed.error
           const done = new Set(seen.data || [])
-          prepared = prepared.filter((q) => !done.has(q.id))
+          const wrong = new Set(missed.data || [])
+          prepared = prepared.filter((q) =>
+            mode === 'new' ? !done.has(q.id) : mode === 'missed' ? wrong.has(q.id) : !done.has(q.id) || wrong.has(q.id),
+          )
         }
         let list = shuffle(prepared)
         if (limit > 0) list = list.slice(0, limit)
@@ -75,7 +82,7 @@ export default function Quiz() {
       }
       setLoading(false)
     })()
-  }, [sectionIds, limit, subjectIds, onlyNew])
+  }, [sectionIds, limit, subjectIds, mode])
 
   const q = questions[index]
   const isStation = q?.question_type === 'station'
