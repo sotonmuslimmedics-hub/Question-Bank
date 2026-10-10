@@ -23,6 +23,7 @@ export default function Quiz() {
   const sectionIds = useMemo(() => (params.get('s') || '').split(',').filter(Boolean), [params])
   const limit = Number(params.get('n')) || 0
   const subjectIds = useMemo(() => (params.get('subject') || '').split(',').filter(Boolean), [params])
+  const onlyNew = params.get('new') === '1'
   const [questions, setQuestions] = useState([])
   const [paths, setPaths] = useState(new Map())
   const [index, setIndex] = useState(0)
@@ -53,10 +54,17 @@ export default function Quiz() {
           }),
           fetchAll(() => supabase.from('sections').select('id,parent_id,name,sort_order').order('id')),
         ])
-        const prepared = data.map((q) => ({
+        let prepared = data.map((q) => ({
           ...q,
           question_parts: [...(q.question_parts || [])].sort((a, b) => a.part_number - b.part_number),
         }))
+        if (onlyNew) {
+          // drop anything already answered *before* the "how many?" cut-off, so 10 means 10 new ones
+          const seen = await supabase.rpc('my_answered_question_ids')
+          if (seen.error) throw seen.error
+          const done = new Set(seen.data || [])
+          prepared = prepared.filter((q) => !done.has(q.id))
+        }
         let list = shuffle(prepared)
         if (limit > 0) list = list.slice(0, limit)
         setQuestions(list)
@@ -67,7 +75,7 @@ export default function Quiz() {
       }
       setLoading(false)
     })()
-  }, [sectionIds, limit, subjectIds])
+  }, [sectionIds, limit, subjectIds, onlyNew])
 
   const q = questions[index]
   const isStation = q?.question_type === 'station'

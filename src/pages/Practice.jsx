@@ -16,6 +16,7 @@ export default function Practice() {
   const [picked, setPicked] = useState(new Set())
   const [open, setOpen] = useState(new Set())
   const [limit, setLimit] = useState('')
+  const [onlyNew, setOnlyNew] = useState(false) // leave out questions this student has already answered
 
   // Sections and the student's all-time progress only need loading once.
   useEffect(() => {
@@ -39,7 +40,9 @@ export default function Practice() {
     if (!sectionRows) return
     ;(async () => {
       try {
-        const counts = await supabase.rpc('section_question_counts', { p_subjects: subjects.size ? [...subjects] : null })
+        // With "new only" on, the counts are of questions not yet answered, so
+        // topics with nothing new left can't be ticked and the total is honest.
+        const counts = await supabase.rpc(onlyNew ? 'section_unseen_counts' : 'section_question_counts', { p_subjects: subjects.size ? [...subjects] : null })
         if (counts.error) throw counts.error
         const c = Object.fromEntries((counts.data || []).map((r) => [r.section_id, Number(r.question_count)]))
         const t = buildTree(sectionRows)
@@ -58,7 +61,7 @@ export default function Practice() {
       }
     })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sectionRows, progress, subjectKey])
+  }, [sectionRows, progress, subjectKey, onlyNew])
 
   const selectedTotal = useMemo(() => {
     if (!tree) return 0
@@ -82,6 +85,7 @@ export default function Practice() {
     const q = new URLSearchParams({ s: [...picked].join(',') })
     if (Number(limit) > 0) q.set('n', String(Number(limit)))
     if (subjects.size) q.set('subject', [...subjects].join(','))
+    if (onlyNew) q.set('new', '1')
     nav(`/quiz?${q}`)
   }
 
@@ -135,7 +139,7 @@ export default function Practice() {
             </span>
           </button>
           <span className="shrink-0 text-xs tabular-nums text-stone-400">
-            {locked ? 'coming soon' : node.totalCount ? `${node.totalDone}/${node.totalCount}` : ''}
+            {locked ? 'coming soon' : onlyNew ? (node.totalCount ? `${node.totalCount} new` : 'all done') : node.totalCount ? `${node.totalDone}/${node.totalCount}` : ''}
           </span>
         </div>
         {hasKids && open.has(node.id) && (
@@ -180,6 +184,13 @@ export default function Practice() {
           {subjects.size === 0 && <p className="mt-2 text-xs text-stone-400">Any subject — pick one or more to narrow it down.</p>}
         </div>
       )}
+      <label className="mb-4 flex cursor-pointer items-start gap-3 rounded-2xl border border-stone-200 bg-white p-3">
+        <input type="checkbox" className="mt-0.5 h-5 w-5 shrink-0 accent-brand-600" checked={onlyNew} onChange={(e) => setOnlyNew(e.target.checked)} />
+        <span className="text-sm">
+          <span className="font-medium">New questions only</span>
+          <span className="block text-xs text-stone-400">Leave out anything you've already answered, so newly released questions aren't mixed in with ones you've done.</span>
+        </span>
+      </label>
       {!tree && !error && <p className="text-sm text-stone-400">Loading…</p>}
       {tree && tree.roots.length === 0 && <Empty>Nothing here yet.</Empty>}
       {tree && (
