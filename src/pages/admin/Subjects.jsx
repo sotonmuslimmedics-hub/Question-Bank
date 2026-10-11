@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useSubjects } from '../../lib/useSubjects'
+import { useAuth } from '../../lib/auth'
 import { PageHeader, Notice, Empty, Modal, inputCls, btnDark, btnGhost, btnDanger, useConfirm } from '../../components/ui'
 
 // A flat, admin-managed list (anatomy, physiology, pharmacology, ...). Leads pick from this
 // list on every question instead of typing a free-text tag, so names stay consistent.
 export default function Subjects() {
   const sub = useSubjects()
+  const { isAdmin } = useAuth()
   const [confirmDialog, askConfirm] = useConfirm()
   const [msg, setMsg] = useState({ text: '', tone: 'ok' })
   const [dlg, setDlg] = useState(null) // {kind:'add'|'rename', row?}
@@ -52,7 +54,13 @@ export default function Subjects() {
   }
 
   async function del(row) {
-    const ok = await askConfirm(`Delete "${row.name}"? Questions using it keep their other details but lose this subject.`)
+    const { count } = await supabase.from('questions').select('id', { count: 'exact', head: true }).eq('subject_id', row.id)
+    const n = count || 0
+    const ok = await askConfirm(
+      n
+        ? `Delete "${row.name}"? The ${n} question${n === 1 ? '' : 's'} using it stay in the bank but are left with no subject, so they won't show up when students practise by subject. This can't be undone — consider renaming instead.`
+        : `Delete "${row.name}"? No questions use it.`,
+    )
     if (!ok) return
     run(supabase.from('subjects').delete().eq('id', row.id), 'Deleted')
   }
@@ -60,7 +68,7 @@ export default function Subjects() {
   return (
     <div>
       <PageHeader title="Subjects" actions={<button className={btnDark} onClick={() => { setName(''); setDlg({ kind: 'add' }) }}>Add subject</button>}>
-        The subjects leads choose from when writing a question — anatomy, physiology, pharmacology and so on. Keeping this as a managed list (rather than free text) stops names drifting into "Anatomy", "anatomy" and "Anat".
+        The subjects leads choose from when writing a question — anatomy, physiology, pharmacology and so on. Keeping this as a managed list (rather than free text) stops names drifting into "Anatomy", "anatomy" and "Anat".{!isAdmin && ' Deleting a subject is admin-only — ask a committee admin if you need one removed.'}
       </PageHeader>
       <Notice tone={msg.tone} onClose={() => setMsg({ text: '' })}>{msg.text}</Notice>
       <Notice tone="error">{sub.error}</Notice>
@@ -74,7 +82,7 @@ export default function Subjects() {
               <button type="button" className={btnGhost} onClick={() => shift(r, -1)} aria-label="Move up">↑</button>
               <button type="button" className={btnGhost} onClick={() => shift(r, 1)} aria-label="Move down">↓</button>
               <button type="button" className={btnGhost} onClick={() => { setName(r.name); setDlg({ kind: 'rename', row: r }) }}>Rename</button>
-              <button type="button" className={btnDanger} onClick={() => del(r)}>Delete</button>
+              {isAdmin && <button type="button" className={btnDanger} onClick={() => del(r)}>Delete</button>}
             </div>
           </li>
         ))}

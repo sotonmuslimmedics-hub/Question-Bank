@@ -33,7 +33,7 @@ frontend (`src/lib/auth.jsx`, `RANK` ladder):
 
 - `student` (0) — can take quizzes, see published questions
 - `teacher` (1) — can also write draft questions (not published until a lead/admin approves) — this is the "student-teacher" role, see `Teach.jsx`
-- `lead` (2) — academic leads: can publish/edit/move/delete any question, manage the section structure (`Structure.jsx`), tag questions for mock exams
+- `lead` (2) — academic leads: can publish/edit/move/delete any question, manage the section structure (`Structure.jsx`) and the subject list (`Subjects.jsx`) — add/rename/reorder only, deleting stays admin-only — tag questions for mock exams
 - `admin` (3) — everything leads can do, plus delete sections, manage people's roles, access `Tools.jsx` (backups, importer, orphaned-image cleanup)
 
 Postgres helper functions `is_admin()`, `is_lead()`, `is_staff()` are used in
