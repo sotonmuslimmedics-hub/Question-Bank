@@ -184,7 +184,7 @@ export default function ManageQuestions() {
       )}
 
       {picked.size > 0 && (
-        <div className="safe-bottom fixed inset-x-0 bottom-[3.9rem] z-20 border-t border-stone-200 bg-white px-4 py-3 shadow-lg sm:bottom-0">
+        <div className="fixed inset-x-0 bottom-[var(--nav-h,0px)] z-20 border-t border-stone-200 bg-white px-4 py-3 shadow-lg">
           <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-2">
             <b className="mr-1 text-sm">{picked.size} selected</b>
             <button className={btnGhost} onClick={() => bulk({ is_published: true }, 'Published')}>Publish</button>

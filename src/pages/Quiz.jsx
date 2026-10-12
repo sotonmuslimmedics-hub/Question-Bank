@@ -273,10 +273,17 @@ export default function Quiz() {
       {answered && q.author_name && <p className="mt-2 text-right text-xs text-stone-400">Question by {q.author_name}</p>}
       {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
 
-      <div className="safe-bottom fixed inset-x-0 bottom-[3.9rem] z-20 border-t border-stone-200 bg-white/95 px-4 py-3 sm:bottom-0">
-        <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
+      <div className="fixed inset-x-0 bottom-[var(--nav-h,0px)] z-20 border-t border-stone-200 bg-white px-4 py-3">
+        <div className="mx-auto flex max-w-2xl items-stretch justify-between gap-3">
           {index > 0 ? (
-            <button type="button" disabled={saving} onClick={() => go(-1)} className={`${btnGhost} shrink-0`}>← Back</button>
+            <button
+              type="button"
+              disabled={saving}
+              onClick={() => go(-1)}
+              className="inline-flex shrink-0 items-center justify-center rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-sm font-semibold text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              ← Back
+            </button>
           ) : (
             <span />
           )}

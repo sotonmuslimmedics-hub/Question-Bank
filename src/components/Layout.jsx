@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { useAnnouncementReads } from '../lib/announcementReads'
@@ -43,6 +43,24 @@ export default function Layout() {
   const showMore = rest.length > 0
   const moreActive = rest.some((i) => loc.pathname.startsWith(i.to))
 
+  // Pages with their own fixed action bar (Quiz, Practise, Questions) sit directly
+  // on top of the phone tab bar. Measure the tab bar's real height (it varies with
+  // font size and the iPhone home-indicator inset) instead of guessing a fixed
+  // offset, which left a visible gap between the two. Hidden on desktop => 0.
+  const navRef = useRef(null)
+  useEffect(() => {
+    const el = navRef.current
+    if (!el) return
+    const set = () => document.documentElement.style.setProperty('--nav-h', `${el.offsetHeight}px`)
+    set()
+    const ro = new ResizeObserver(set)
+    ro.observe(el)
+    return () => {
+      ro.disconnect()
+      document.documentElement.style.removeProperty('--nav-h')
+    }
+  }, [])
+
   return (
     <div className="min-h-screen pb-20 sm:pb-0">
       <header className="sticky top-0 z-30 border-b border-stone-200 bg-paper/95 backdrop-blur">
@@ -82,7 +100,7 @@ export default function Layout() {
       </main>
 
       {/* Phone tab bar */}
-      <nav className="safe-bottom fixed inset-x-0 bottom-0 z-30 border-t border-stone-200 bg-white sm:hidden" aria-label="Main">
+      <nav ref={navRef} className="safe-bottom fixed inset-x-0 bottom-0 z-30 border-t border-stone-200 bg-white sm:hidden" aria-label="Main">
         <ul className="flex">
           {tabs.map((i) => (
             <li key={i.to} className="flex-1">

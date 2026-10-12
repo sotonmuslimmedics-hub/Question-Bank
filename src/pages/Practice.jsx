@@ -224,7 +224,7 @@ export default function Practice() {
         </ul>
       )}
 
-      <div className="safe-bottom fixed inset-x-0 bottom-[3.9rem] z-20 rounded-t-2xl border-t border-stone-200 bg-white/95 px-4 pb-4 pt-3 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.15)] backdrop-blur sm:bottom-0 sm:rounded-none">
+      <div className="fixed inset-x-0 bottom-[var(--nav-h,0px)] z-20 rounded-t-2xl border-t border-stone-200 bg-white px-4 pb-4 pt-3 shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.15)] sm:rounded-none">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3">
           <div className="min-w-0 flex-1 text-sm">
             <b>{selectedTotal}</b> question{selectedTotal === 1 ? '' : 's'} selected
