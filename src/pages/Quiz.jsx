@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { imageUrl } from '../lib/images'
@@ -112,21 +112,36 @@ export default function Quiz() {
     setChecked(true)
   }
 
-  async function next() {
-    if (isStation) {
-      setSaving(true)
-      const rows = q.question_parts.map((p, i) => ({ part_id: p.id, answer_text: typed[i] || '', is_correct: marks[i] }))
-      const { error } = await supabase.from('part_attempts').insert(rows)
-      if (error) setError('Your answers could not be saved: ' + error.message)
-      setScore((s) => ({ done: s.done + rows.length, correct: s.correct + marks.filter(Boolean).length }))
-      setSaving(false)
-    }
-    setChosen(null)
-    setTyped(['', ''])
-    setChecked(false)
-    setMarks([false, false])
-    setAutoMarks([false, false])
-    setIndex((n) => n + 1)
+  // Photo-question answers are saved when you leave the question (so you can still
+  // change a mark after checking). Tracked per question so going back and forward
+  // never saves or scores the same attempt twice.
+  const savedRef = useRef(new Set())
+  // What was on screen for each question you've visited, so Back/Next can restore it.
+  const historyRef = useRef({})
+
+  async function saveStation() {
+    setSaving(true)
+    const rows = q.question_parts.map((p, i) => ({ part_id: p.id, answer_text: typed[i] || '', is_correct: marks[i] }))
+    const { error } = await supabase.from('part_attempts').insert(rows)
+    if (error) setError('Your answers could not be saved: ' + error.message)
+    else savedRef.current.add(index)
+    setScore((s) => ({ done: s.done + rows.length, correct: s.correct + marks.filter(Boolean).length }))
+    setSaving(false)
+  }
+
+  // Move to another question in the session (delta = -1 back, +1 forward), restoring
+  // exactly how you left it — including the explanation, so you can re-read why you were wrong.
+  async function go(delta) {
+    if (saving) return
+    if (isStation && checked && !savedRef.current.has(index)) await saveStation()
+    historyRef.current[index] = { chosen, typed, checked, marks, autoMarks }
+    const h = historyRef.current[index + delta]
+    setChosen(h ? h.chosen : null)
+    setTyped(h ? h.typed : ['', ''])
+    setChecked(h ? h.checked : false)
+    setMarks(h ? h.marks : [false, false])
+    setAutoMarks(h ? h.autoMarks : [false, false])
+    setIndex(index + delta)
   }
 
   if (loading) return <p className="text-stone-500">Loading questions…</p>
@@ -145,6 +160,7 @@ export default function Quiz() {
         <p className="mt-2 text-5xl font-bold text-brand-700">{score.correct}<span className="text-2xl text-stone-400"> / {score.done}</span></p>
         <p className="mt-1 text-stone-500">{score.done ? Math.round((score.correct / score.done) * 100) : 0}% correct</p>
         <Link to="/practice" className={`${btnDark} mt-6`}>Back to Practise</Link>
+        <button type="button" onClick={() => go(-1)} className="mt-3 block w-full text-sm font-medium text-stone-500 hover:text-stone-700">← Review my answers</button>
       </div>
     )
 
@@ -226,9 +242,11 @@ export default function Quiz() {
                       {p.accepted_answers[0]}
                       {p.accepted_answers.length > 1 && <span className="text-stone-500"> (also accepted: {p.accepted_answers.slice(1).join('; ')})</span>}
                     </div>
-                    <button type="button" onClick={() => setMarks((m) => m.map((v, j) => (j === i ? !v : v)))} className={`${btnGhost} mt-2`}>
-                      {good ? 'Actually I got this wrong' : 'My answer was right (different wording)'}
-                    </button>
+                    {!savedRef.current.has(index) && (
+                      <button type="button" onClick={() => setMarks((m) => m.map((v, j) => (j === i ? !v : v)))} className={`${btnGhost} mt-2`}>
+                        {good ? 'Actually I got this wrong' : 'My answer was right (different wording)'}
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -256,11 +274,16 @@ export default function Quiz() {
       {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
 
       <div className="safe-bottom fixed inset-x-0 bottom-[3.9rem] z-20 border-t border-stone-200 bg-white/95 px-4 py-3 sm:bottom-0">
-        <div className="mx-auto flex max-w-2xl justify-end">
-          {isStation && !checked ? (
-            <button onClick={checkStation} className={`${btnPrimary} w-full sm:w-auto`}>Check answers</button>
+        <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
+          {index > 0 ? (
+            <button type="button" disabled={saving} onClick={() => go(-1)} className={`${btnGhost} shrink-0`}>← Back</button>
           ) : (
-            <button disabled={!answered || saving} onClick={next} className={`${btnDark} w-full sm:w-auto`}>
+            <span />
+          )}
+          {isStation && !checked ? (
+            <button onClick={checkStation} className={`${btnPrimary} flex-1 sm:flex-none`}>Check answers</button>
+          ) : (
+            <button disabled={!answered || saving} onClick={() => go(1)} className={`${btnDark} flex-1 sm:flex-none`}>
               {index + 1 === questions.length ? 'Finish' : 'Next →'}
             </button>
           )}
