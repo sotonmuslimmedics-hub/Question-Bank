@@ -137,7 +137,7 @@ export default function Layout() {
 
       {more && (
         <div className="fixed inset-0 z-40 flex items-end bg-black/40 sm:hidden" onClick={() => setMore(false)}>
-          <div className="safe-bottom w-full rounded-t-3xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
+          <div className="max-h-[85dvh] w-full overflow-y-auto rounded-t-3xl bg-white p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]" onClick={(e) => e.stopPropagation()}>
             {[...new Set(rest.map((i) => i.group))].map((g) => (
               <div key={g} className="mb-3">
                 <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-stone-400">{g}</p>
