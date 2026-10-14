@@ -8,6 +8,9 @@ import { Pill, btnDark, btnPrimary, btnGhost, inputCls } from '../components/ui'
 
 const LETTERS = 'ABCDEFGH'
 const DIFF = { 1: 'Easier', 2: 'Medium', 3: 'Harder' }
+// Same size as the big Next/Check button so the bottom bar lines up.
+const outlineBtn =
+  'inline-flex items-center justify-center rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-sm font-semibold text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50'
 
 function shuffle(arr) {
   const a = [...arr]
@@ -131,17 +134,27 @@ export default function Quiz() {
 
   // Move to another question in the session (delta = -1 back, +1 forward), restoring
   // exactly how you left it — including the explanation, so you can re-read why you were wrong.
-  async function go(delta) {
+  async function goTo(target) {
     if (saving) return
     if (isStation && checked && !savedRef.current.has(index)) await saveStation()
     historyRef.current[index] = { chosen, typed, checked, marks, autoMarks }
-    const h = historyRef.current[index + delta]
+    const h = historyRef.current[target]
     setChosen(h ? h.chosen : null)
     setTyped(h ? h.typed : ['', ''])
     setChecked(h ? h.checked : false)
     setMarks(h ? h.marks : [false, false])
     setAutoMarks(h ? h.autoMarks : [false, false])
-    setIndex(index + delta)
+    setIndex(target)
+  }
+  const go = (delta) => goTo(index + delta)
+
+  // A question counts as answered once an option is chosen (MCQ) or the answers are
+  // checked (photo). Anything else the student moved past was skipped, and stays
+  // answerable if they come back to it.
+  const answeredAt = (i) => {
+    const h = historyRef.current[i]
+    if (!h) return false
+    return questions[i].question_type === 'station' ? h.checked : h.chosen !== null
   }
 
   if (loading) return <p className="text-stone-500">Loading questions…</p>
@@ -153,16 +166,26 @@ export default function Quiz() {
       </div>
     )
 
-  if (finished)
+  if (finished) {
+    const skipped = questions.map((_, i) => i).filter((i) => !answeredAt(i))
     return (
       <div className="mx-auto max-w-md rounded-3xl border border-stone-200 bg-white p-8 text-center">
         <h1 className="text-2xl font-bold">Session complete</h1>
         <p className="mt-2 text-5xl font-bold text-brand-700">{score.correct}<span className="text-2xl text-stone-400"> / {score.done}</span></p>
         <p className="mt-1 text-stone-500">{score.done ? Math.round((score.correct / score.done) * 100) : 0}% correct</p>
+        {skipped.length > 0 && (
+          <div className="mt-4 rounded-2xl bg-amber-50 p-3 text-sm text-amber-800">
+            You skipped {skipped.length} question{skipped.length === 1 ? '' : 's'}.
+            <button type="button" onClick={() => goTo(skipped[0])} className="mt-2 block w-full rounded-xl border border-amber-300 bg-white px-3 py-2 font-semibold text-amber-900 hover:bg-amber-100">
+              Go back to {skipped.length === 1 ? 'it' : 'the first one'}
+            </button>
+          </div>
+        )}
         <Link to="/practice" className={`${btnDark} mt-6`}>Back to Practise</Link>
         <button type="button" onClick={() => go(-1)} className="mt-3 block w-full text-sm font-medium text-stone-500 hover:text-stone-700">← Review my answers</button>
       </div>
     )
+  }
 
   const pct = (index / questions.length) * 100
   const allRight = isStation && marks.every(Boolean)
@@ -276,23 +299,26 @@ export default function Quiz() {
       <div className="fixed inset-x-0 bottom-[var(--nav-h,0px)] z-20 border-t border-stone-200 bg-white px-4 py-3">
         <div className="mx-auto flex max-w-2xl items-stretch justify-between gap-3">
           {index > 0 ? (
-            <button
-              type="button"
-              disabled={saving}
-              onClick={() => go(-1)}
-              className="inline-flex shrink-0 items-center justify-center rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-sm font-semibold text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50"
-            >
+            <button type="button" disabled={saving} onClick={() => go(-1)} className={`${outlineBtn} shrink-0`}>
               ← Back
             </button>
           ) : (
             <span />
           )}
-          {isStation && !checked ? (
-            <button onClick={checkStation} className={`${btnPrimary} flex-1 sm:flex-none`}>Check answers</button>
-          ) : (
-            <button disabled={!answered || saving} onClick={() => go(1)} className={`${btnDark} flex-1 sm:flex-none`}>
+          {answered ? (
+            <button disabled={saving} onClick={() => go(1)} className={`${btnDark} flex-1 sm:flex-none`}>
               {index + 1 === questions.length ? 'Finish' : 'Next →'}
             </button>
+          ) : (
+            // not answered yet: you can skip it (it stays answerable if you come back)
+            <div className="flex flex-1 items-stretch justify-end gap-3">
+              <button type="button" disabled={saving} onClick={() => go(1)} className={`${outlineBtn} ${isStation ? 'shrink-0' : 'flex-1 sm:flex-none'}`}>
+                {index + 1 === questions.length ? 'Skip & finish' : 'Skip →'}
+              </button>
+              {isStation && (
+                <button onClick={checkStation} className={`${btnPrimary} flex-1 sm:flex-none`}>Check answers</button>
+              )}
+            </div>
           )}
         </div>
       </div>
