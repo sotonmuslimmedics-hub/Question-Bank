@@ -84,9 +84,17 @@ export default function Announcements() {
   }
   useEffect(() => { load() }, [])
 
-  // Once the page has rendered with the snapshot in hand, mark everything as seen.
+  // Once the page has rendered with the snapshot in hand, mark everything as seen —
+  // exactly once per visit. markSeen() updates lastSeenAt, which is one of this
+  // effect's own dependencies, so without the guard it re-triggered itself forever
+  // (thousands of writes an hour for as long as the News page stayed open).
+  const markedRef = useRef(false)
   useEffect(() => {
-    if (rows && lastSeenAt !== null && markSeen) markSeen()
+    if (markedRef.current) return
+    if (rows && lastSeenAt !== null && markSeen) {
+      markedRef.current = true
+      markSeen()
+    }
   }, [rows, lastSeenAt, markSeen])
 
   async function save(e) {
