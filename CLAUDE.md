@@ -33,7 +33,7 @@ frontend (`src/lib/auth.jsx`, `RANK` ladder):
 
 - `student` (0) — can take quizzes, see published questions
 - `teacher` (1) — can also write draft questions (not published until a lead/admin approves) — this is the "student-teacher" role, see `Teach.jsx`
-- `lead` (2) — academic leads: can publish/edit/move/delete any question, manage the section structure (`Structure.jsx`) and the subject list (`Subjects.jsx`) — add/rename/reorder only, deleting stays admin-only — tag questions for mock exams
+- `lead` (2) — academic leads: can publish/edit/move/delete any question, manage the section structure (`Structure.jsx`) and the subject list (`Subjects.jsx`) — add/rename/reorder only, deleting stays admin-only — tag questions for mock exams, and see cohort-level `Insights` (hardest topics/questions)
 - `admin` (3) — everything leads can do, plus delete sections, manage people's roles, access `Tools.jsx` (backups, importer, orphaned-image cleanup)
 
 Postgres helper functions `is_admin()`, `is_lead()`, `is_staff()` are used in
@@ -64,6 +64,17 @@ broken, or hidden but actually allowed.
   scattered selection of questions used in a mock exam, so they can filter
   back to that exact set later without reselecting — separate from the
   section/locking mechanism.
+
+## Student data / privacy rule (keep this when adding analytics)
+
+The Insights page (`src/pages/admin/Insights.jsx`) reads only the Postgres
+functions `insights_summary`, `insights_topics` and `insights_questions`. They
+return **aggregates only** (never user ids or names), return nothing to non-leads,
+and drop any topic/question answered by fewer than 5 distinct students so a small
+group can't identify one person. Don't add per-student views for leads without a
+clear purpose, a privacy notice, and ideally the student opting in. (Note: the
+`attempts` RLS policy lets admins read individual rows — the app itself shouldn't
+surface them.)
 
 ## Where things live (so Claude can be asked to check them)
 

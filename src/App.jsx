@@ -14,6 +14,7 @@ import ManageQuestions from './pages/admin/ManageQuestions'
 import Teaching from './pages/admin/Teaching'
 import Structure from './pages/admin/Structure'
 import Subjects from './pages/admin/Subjects'
+import Insights from './pages/admin/Insights'
 import People from './pages/admin/People'
 import Tools from './pages/admin/Tools'
 
@@ -43,6 +44,7 @@ export default function App() {
         <Route path="manage/teaching" element={<Gate min="lead"><Teaching /></Gate>} />
         <Route path="manage/structure" element={<Gate min="lead"><Structure /></Gate>} />
         <Route path="manage/subjects" element={<Gate min="lead"><Subjects /></Gate>} />
+        <Route path="manage/insights" element={<Gate min="lead"><Insights /></Gate>} />
         <Route path="manage/people" element={<Gate min="admin"><People /></Gate>} />
         <Route path="manage/tools" element={<Gate min="admin"><Tools /></Gate>} />
       </Route>
