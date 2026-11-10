@@ -51,6 +51,16 @@ broken, or hidden but actually allowed.
   silent bugs (field invisible in editor, nulled out on next save, or
   wrongly flagged as an "unused" image to delete). This has bitten us twice
   already (`explanation_image_path`, `exam_tag`).
+- **`title`** (optional short label on `questions`, max 120 chars, set in `QuestionEditor.jsx`) exists so
+  leads can tell apart the ~100 photo questions that all begin "Study the image below…". The Questions page
+  (`ManageQuestions.jsx`) shows `title`, else the first part's prompt for a generic photo stem, else the stem,
+  plus each part's prompt and first accepted answer. Any `.select()` that feeds `QuestionEditor` must include
+  `title` (`ManageQuestions.jsx`, `Teach.jsx`, `Insights.jsx`'s `FULL_SELECT`); the editor only writes `title`
+  when the row it was given has it, so a missed select can't blank it. Students never see it.
+- **Questions-page search** calls the Postgres function `search_question_ids(text)` (stem, title, part prompts and
+  accepted answers; plain substring match; runs as the caller so RLS applies; returns at most 150 ids — keep
+  `SEARCH_CAP` in `ManageQuestions.jsx` in step with the `limit 150` inside the function). It exists because PostgREST
+  can't OR a condition on a question with one on its child `question_parts` rows.
 - **Supabase Auth "Site URL"** (Dashboard → Authentication → URL
   Configuration) must be the bare origin only
   (`https://question-bank.sotonmuslimmedics.workers.dev`) — **no path**. Email

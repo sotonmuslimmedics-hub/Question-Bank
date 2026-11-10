@@ -9,6 +9,18 @@ import SlideDialog from '../../components/SlideDialog'
 import { PageHeader, Notice, Empty, Pill, Modal, inputCls, btnDark, btnGhost, btnDanger, useConfirm, usePrompt } from '../../components/ui'
 
 const PAGE = 40
+const SEARCH_CAP = 150 // must match the limit inside the search_question_ids() database function
+
+// Many photo questions share the stem "Study the image below, then answer the following questions…",
+// which makes them indistinguishable in a list. Prefer the lead-written short title, then the first
+// part's own question, and only then the stem.
+const GENERIC_STEM = /^\s*study the (image|photo|picture)/i
+const sortedParts = (q) => [...(q.question_parts || [])].sort((a, b) => a.part_number - b.part_number)
+function headline(q) {
+  if (q.title) return q.title
+  if (q.question_type === 'station' && GENERIC_STEM.test(q.stem || '')) return sortedParts(q)[0]?.prompt || q.stem
+  return q.stem
+}
 
 export default function ManageQuestions() {
   const sec = useSections()
@@ -25,6 +37,7 @@ export default function ManageQuestions() {
   const [editing, setEditing] = useState(null)
   const [slides, setSlides] = useState(false)
   const [moveTo, setMoveTo] = useState(null) // string | null
+  const [capped, setCapped] = useState(false) // search matched more than SEARCH_CAP questions
 
   // Questions used in a mock exam are often ones already living in their
   // normal topic section, scattered across the syllabus — not a fresh batch
@@ -52,9 +65,31 @@ export default function ManageQuestions() {
     async (append = false, from = 0) => {
       const seq = ++loadSeq.current
       setLoading(true)
+      // Search looks in the stem, short title, every part prompt and every accepted answer.
+      // PostgREST can't OR across a parent and its child rows, so a database function finds the ids first.
+      let matchIds = null
+      if (f.q.trim()) {
+        const { data: found, error: sErr } = await supabase.rpc('search_question_ids', { p_q: f.q.trim() })
+        if (seq !== loadSeq.current) return
+        if (sErr) {
+          setMsg({ text: sErr.message, tone: 'error' })
+          setLoading(false)
+          return
+        }
+        matchIds = found || []
+        setCapped(matchIds.length >= SEARCH_CAP)
+        if (!matchIds.length) {
+          if (!append) setRows([])
+          setTotal(0)
+          setLoading(false)
+          return
+        }
+      } else {
+        setCapped(false)
+      }
       let query = supabase
         .from('questions')
-        .select('id,stem,options,correct_option,explanation,explanation_image_path,section_id,subject_id,question_type,image_path,is_published,difficulty,author_name,created_by,created_at,exam_tag,question_parts(id,part_number,prompt,accepted_answers)', { count: 'exact' })
+        .select('id,stem,title,options,correct_option,explanation,explanation_image_path,section_id,subject_id,question_type,image_path,is_published,difficulty,author_name,created_by,created_at,exam_tag,question_parts(id,part_number,prompt,accepted_answers)', { count: 'exact' })
         .order('created_at', { ascending: false })
         .range(from, from + PAGE - 1)
       if (f.section && sec.nodes.get(f.section)) query = query.in('section_id', descendantIds(sec.nodes.get(f.section)))
@@ -63,7 +98,7 @@ export default function ManageQuestions() {
       if (f.status === 'draft') query = query.eq('is_published', false)
       if (f.type !== 'all') query = query.eq('question_type', f.type)
       if (f.examTag) query = query.eq('exam_tag', f.examTag)
-      if (f.q.trim()) query = query.ilike('stem', `%${f.q.trim().replace(/[%,]/g, ' ')}%`)
+      if (matchIds) query = query.in('id', matchIds)
       const { data, count, error } = await query
       if (seq !== loadSeq.current) return // a newer load was issued meanwhile; drop this stale response
       if (error) setMsg({ text: error.message, tone: 'error' })
@@ -138,7 +173,7 @@ export default function ManageQuestions() {
           <option value="">Any mock tag</option>
           {tags.map((t) => <option key={t} value={t}>{t}</option>)}
         </select>
-        <input className={inputCls} placeholder="Search text" value={f.q} onChange={(e) => setF({ ...f, q: e.target.value })} />
+        <input className={inputCls} placeholder="Search text, title, parts, answers" value={f.q} onChange={(e) => setF({ ...f, q: e.target.value })} />
       </div>
 
       <div className="mb-2 flex items-center gap-2 text-xs text-stone-500">
@@ -158,13 +193,26 @@ export default function ManageQuestions() {
         )}
         <span>{total} question{total === 1 ? '' : 's'}{rows.length > 0 ? ` (select all to pick the ${rows.length} shown${rows.length < total ? ' — load more first for the rest' : ''})` : ''}</span>
       </div>
+      {capped && <p className="mb-2 text-xs text-amber-700">Showing the {SEARCH_CAP} most recent matches. Narrow your search to see the rest.</p>}
       {!loading && !rows.length && <Empty>No questions match.</Empty>}
       <div className="divide-y divide-stone-100 rounded-2xl border border-stone-200 bg-white">
         {rows.map((q) => (
           <div key={q.id} className="flex items-start gap-3 p-3">
             <input type="checkbox" className="mt-1 h-5 w-5 shrink-0 accent-brand-600" checked={picked.has(q.id)} onChange={() => toggle(q.id)} aria-label="Select" />
             <button className="min-w-0 flex-1 text-left" onClick={() => setEditing(q)}>
-              <span className="line-clamp-2 text-sm font-medium">{q.stem}</span>
+              <span className="line-clamp-2 text-sm font-medium">{headline(q)}</span>
+              {q.question_type === 'station' && sortedParts(q).length > 0 && (
+                <span className="mt-1 block space-y-0.5 text-xs text-stone-600">
+                  {sortedParts(q).slice(0, 4).map((p) => (
+                    <span key={p.id} className="block truncate">
+                      {p.part_number}. {p.prompt}
+                      {p.accepted_answers?.[0] ? <span className="text-stone-400"> → </span> : null}
+                      {p.accepted_answers?.[0] ? <b className="font-medium text-stone-800">{p.accepted_answers[0]}</b> : null}
+                    </span>
+                  ))}
+                  {sortedParts(q).length > 4 && <span className="block text-stone-400">+{sortedParts(q).length - 4} more parts</span>}
+                </span>
+              )}
               <span className="mt-1 flex flex-wrap items-center gap-2 text-xs text-stone-500">
                 <Pill tone={q.is_published ? 'green' : 'amber'}>{q.is_published ? 'Live' : 'Draft'}</Pill>
                 <Pill>{q.question_type === 'station' ? 'Photo' : 'MCQ'}</Pill>

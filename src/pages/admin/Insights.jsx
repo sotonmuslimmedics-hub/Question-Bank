@@ -8,7 +8,7 @@ import { PageHeader, Notice, Empty, Pill, Modal, btnGhost, card, inputCls } from
 
 // Same column list as the Questions page, so the editor opens with every field filled in.
 const FULL_SELECT =
-  'id,stem,options,correct_option,explanation,explanation_image_path,section_id,subject_id,question_type,image_path,is_published,difficulty,author_name,created_by,created_at,exam_tag,question_parts(id,part_number,prompt,accepted_answers)'
+  'id,stem,options,correct_option,explanation,explanation_image_path,section_id,subject_id,question_type,image_path,is_published,difficulty,author_name,created_by,created_at,exam_tag,title,question_parts(id,part_number,prompt,accepted_answers)'
 
 const MIN_STUDENTS = 5
 

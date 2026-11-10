@@ -15,6 +15,7 @@ export default function QuestionEditor({ initial, sections, subjects, canPublish
   const [sectionId, setSectionId] = useState(q.section_id || '')
   const [subjectId, setSubjectId] = useState(q.subject_id || '')
   const [stem, setStem] = useState(q.stem || '')
+  const [title, setTitle] = useState(q.title || '')
   const [options, setOptions] = useState(q.options || ['', '', '', '', ''])
   const [correct, setCorrect] = useState(q.correct_option ?? 0)
   const [explanation, setExplanation] = useState(q.explanation || '')
@@ -153,6 +154,9 @@ export default function QuestionEditor({ initial, sections, subjects, canPublish
         image_path: imagePath,
         is_published: canPublish ? published : false,
       }
+      // Only write the title when this editor was given the real value (a new question, or a row
+      // fetched with `title` in its select). A fetch that forgot the column would otherwise blank it on save.
+      if (!q.id || 'title' in q) row.title = title.trim() || null
       let id = q.id
       if (id) {
         const { error } = await supabase.from('questions').update(row).eq('id', id)
@@ -224,6 +228,20 @@ export default function QuestionEditor({ initial, sections, subjects, canPublish
       <label className="block text-sm font-medium">
         {type === 'mcq' ? 'Question' : 'Prompt shown above the photo'}
         <textarea className={`${inputCls} mt-1`} rows={type === 'mcq' ? 4 : 2} value={stem} onChange={(e) => setStem(e.target.value)} required />
+      </label>
+
+      <label className="block text-sm font-medium">
+        Short title <span className="font-normal text-stone-400">(optional)</span>
+        <input
+          className={`${inputCls} mt-1`}
+          value={title}
+          maxLength={120}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder={type === 'station' ? 'e.g. Axial CT abdomen: liver' : 'e.g. Management of anaphylaxis'}
+        />
+        <span className="mt-1 block text-xs font-normal text-stone-500">
+          Only leads and teachers see this. It makes the question easy to spot in lists and search, which helps when many photo questions share the same “Study the image…” wording.
+        </span>
       </label>
 
       {type === 'station' && (
