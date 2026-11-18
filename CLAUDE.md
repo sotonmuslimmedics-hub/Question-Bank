@@ -61,6 +61,21 @@ broken, or hidden but actually allowed.
   accepted answers; plain substring match; runs as the caller so RLS applies; returns at most 150 ids — keep
   `SEARCH_CAP` in `ManageQuestions.jsx` in step with the `limit 150` inside the function). It exists because PostgREST
   can't OR a condition on a question with one on its child `question_parts` rows.
+- **Timed mock exams (database built, screens not yet).** Tables `mock_papers`, `mock_paper_questions`,
+  `mock_attempts`, `mock_answers`; MCQ only; retakes allowed (one sitting in progress at a time); an open window
+  per paper (`status` draft/live/closed plus optional `opens_at`/`closes_at`). Rules to keep:
+  - **Held questions.** A question in any unreleased paper has `questions.mock_hold = true` (kept in step by
+    triggers) and the `questions read by section` policy hides it from students — Practise/Quiz never see it. Leads
+    still see everything. `mock_release(paper)` closes a paper and frees its questions. Don't `select` held
+    questions from the browser for students; they only reach the exam screen through `mock_get`.
+  - **Students never write mock tables directly.** All sitting logic is in security-definer functions:
+    `mock_list`, `mock_start`, `mock_get`, `mock_save`, `mock_submit`, `mock_results` (+ lead-only `mock_release`).
+    The deadline is stored server-side (`deadline_at`, 15 s grace); expired sittings are scored lazily the next time
+    they're read. `mock_get` never returns correct answers or explanations; `mock_results` does, only once submitted.
+  - **Payment hook.** `mock_can_access(paper)` currently returns true for everyone; change it when payment goes live.
+  - **Privacy.** Sittings are readable only by their owner (not even admins). The cohort percentile in
+    `mock_results` appears only when 5+ students have sat the paper, using each student's first sitting.
+  - Mock answers are separate from `attempts`, so they don't affect Insights or the New/Missed modes.
 - **Supabase Auth "Site URL"** (Dashboard → Authentication → URL
   Configuration) must be the bare origin only
   (`https://question-bank.sotonmuslimmedics.workers.dev`) — **no path**. Email
