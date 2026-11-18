@@ -171,7 +171,8 @@ export default function MockExam() {
             <div className="truncate text-xs font-semibold text-stone-500">{exam.paper.title}</div>
             <div className="text-sm font-bold">Question {index + 1} of {n}</div>
           </div>
-          <div className="text-right">
+          {/* fixed width, so the box never resizes when the save message below it changes */}
+          <div className="w-28 shrink-0 text-center">
             <div
               className={`rounded-xl px-3 py-1 text-lg font-bold tabular-nums ${urgent ? 'animate-pulse bg-red-600 text-white' : warn ? 'bg-amber-100 text-amber-800' : 'bg-stone-900 text-white'}`}
               role="timer"
@@ -179,10 +180,10 @@ export default function MockExam() {
             >
               {fmtClock(left ?? 0)}
             </div>
-            <div className={`mt-0.5 text-[11px] ${saveState === 'retry' ? 'font-semibold text-red-600' : 'text-stone-400'}`}>
-              {saveState === 'saved' && 'All answers saved'}
+            <div className={`mt-0.5 h-4 whitespace-nowrap text-[11px] ${saveState === 'retry' ? 'font-semibold text-red-600' : 'text-stone-400'}`}>
+              {saveState === 'saved' && 'Saved ✓'}
               {saveState === 'saving' && 'Saving…'}
-              {saveState === 'retry' && 'Not saved — retrying…'}
+              {saveState === 'retry' && 'Retrying…'}
             </div>
           </div>
         </div>

@@ -33,7 +33,7 @@ export default function ManageQuestions() {
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [msg, setMsg] = useState({ text: '', tone: 'ok' })
-  const [f, setF] = useState({ section: '', subject: '', status: 'all', type: 'all', q: '', mine: false, examTag: '' })
+  const [f, setF] = useState({ section: '', subject: '', status: 'all', type: 'all', q: '', mine: false, examTag: '', paper: '' })
   const [picked, setPicked] = useState(new Set())
   const [editing, setEditing] = useState(null)
   const [slides, setSlides] = useState(false)
@@ -91,7 +91,7 @@ export default function ManageQuestions() {
       }
       let query = supabase
         .from('questions')
-        .select('id,stem,title,options,correct_option,explanation,explanation_image_path,section_id,subject_id,question_type,image_path,is_published,difficulty,author_name,created_by,created_at,exam_tag,question_parts(id,part_number,prompt,accepted_answers)', { count: 'exact' })
+        .select('id,stem,title,options,correct_option,explanation,explanation_image_path,section_id,subject_id,question_type,image_path,is_published,difficulty,author_name,created_by,created_at,exam_tag,mock_hold,question_parts(id,part_number,prompt,accepted_answers)', { count: 'exact' })
         .order('created_at', { ascending: false })
         .range(from, from + PAGE - 1)
       if (f.section && sec.nodes.get(f.section)) query = query.in('section_id', descendantIds(sec.nodes.get(f.section)))
@@ -100,6 +100,8 @@ export default function ManageQuestions() {
       if (f.status === 'draft') query = query.eq('is_published', false)
       if (f.type !== 'all') query = query.eq('question_type', f.type)
       if (f.examTag) query = query.eq('exam_tag', f.examTag)
+      if (f.paper === 'in') query = query.eq('mock_hold', true)
+      if (f.paper === 'out') query = query.eq('mock_hold', false)
       if (matchIds) query = query.in('id', matchIds)
       const { data, count, error } = await query
       if (seq !== loadSeq.current) return // a newer load was issued meanwhile; drop this stale response
@@ -171,6 +173,11 @@ export default function ManageQuestions() {
           <option value="mcq">MCQ only</option>
           <option value="station">Photo only</option>
         </select>
+        <select className={inputCls} value={f.paper} onChange={(e) => setF({ ...f, paper: e.target.value })}>
+          <option value="">In or out of a paper</option>
+          <option value="in">In an unreleased mock paper</option>
+          <option value="out">Not in a mock paper</option>
+        </select>
         <select className={inputCls} value={f.examTag} onChange={(e) => setF({ ...f, examTag: e.target.value })}>
           <option value="">Any mock tag</option>
           {tags.map((t) => <option key={t} value={t}>{t}</option>)}
@@ -219,6 +226,7 @@ export default function ManageQuestions() {
                 <Pill tone={q.is_published ? 'green' : 'amber'}>{q.is_published ? 'Live' : 'Draft'}</Pill>
                 <Pill>{q.question_type === 'station' ? 'Photo' : 'MCQ'}</Pill>
                 {subjectName(q.subject_id) && <Pill>{subjectName(q.subject_id)}</Pill>}
+                {q.mock_hold && <Pill tone="brand">In mock paper</Pill>}
                 {q.exam_tag && <Pill tone="amber">{q.exam_tag}</Pill>}
                 {q.author_name && <span>{q.author_name}</span>}
                 <span className="truncate">{pathOf(sec.nodes, q.section_id)}</span>
