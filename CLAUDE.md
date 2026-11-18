@@ -66,7 +66,10 @@ broken, or hidden but actually allowed.
   optional `opens_at`/`closes_at`). Screens: students `Mocks.jsx` (list) → `MockExam.jsx` (timer, autosave, flags,
   submit) → `MockResults.jsx` (score, subjects, cohort percentile, review); leads `admin/MockPapers.jsx` (create,
   order, set live, close, release, preview) plus "Add to paper…" on the Questions page
-  (`components/AddToPaperDialog.jsx`). A paper can only go live when all its questions are published. Not built yet:
+  (`components/AddToPaperDialog.jsx`). A paper's questions may be published or unpublished — here "unpublished" only means "not shown in normal
+  practice yet" (MMS leads keep finished questions unpublished until they want students to see them), so going live never
+  checks it. Releasing a paper clears the hold only; questions still unpublished stay hidden until a lead publishes them.
+  Not built yet:
   per-paper stats for leads, copying mock answers into Missed mode, payment (see hook below). Rules to keep:
   - **Held questions.** A question in any unreleased paper has `questions.mock_hold = true` (kept in step by
     triggers) and the `questions read by section` policy hides it from students — Practise/Quiz never see it. Leads

@@ -71,19 +71,18 @@ export default function MockPapers() {
 
   function goLive(p) {
     const list = (byPaper.get(p.id) || []).filter((x) => x.questions.question_type === 'mcq')
-    const drafts = list.filter((x) => !x.questions.is_published).length
     if (!list.length) return bad('Add some multiple-choice questions first.')
-    if (drafts > 0) return bad(`${drafts} question${drafts === 1 ? ' is' : 's are'} still a draft. Publish ${drafts === 1 ? 'it' : 'them'} on the Questions page first, so students only get reviewed questions.`)
+    // Whether a question is published has no bearing here: "unpublished" just means it is not in normal practice yet.
     setStatus(p, 'live', `“${p.title}” is now open to students.`)
   }
 
   async function release(p) {
-    const yes = await askConfirm(`Release “${p.title}”? It will close, and its questions go back into students' normal practice for everyone. Students keep their scores and can still review. This can't be undone.`, 'Release')
+    const yes = await askConfirm(`Release “${p.title}”? It will close, and its published questions go back into students' normal practice. Any that are still unpublished stay hidden until you publish them on the Questions page. Students keep their scores and can still review. This can't be undone.`, 'Release')
     if (!yes) return
     run(p.id, async () => {
       const { error } = await supabase.rpc('mock_release', { p_paper: p.id })
       if (error) throw error
-    }, 'Released. Its questions are back in normal practice.')
+    }, 'Released. Its published questions are back in normal practice; unpublished ones stay hidden until you publish them.')
   }
 
   async function remove(p) {
@@ -137,7 +136,6 @@ export default function MockPapers() {
         {(papers || []).map((p) => {
           const list = byPaper.get(p.id) || []
           const mcq = list.filter((x) => x.questions.question_type === 'mcq')
-          const drafts = mcq.filter((x) => !x.questions.is_published).length
           const released = !!p.released_at
           const expanded = open === p.id
           return (
@@ -154,7 +152,6 @@ export default function MockPapers() {
               <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-stone-500">
                 <Pill tone="brand">{mcq.length} questions</Pill>
                 <Pill tone="brand">{fmtDuration(p.duration_minutes)}</Pill>
-                {drafts > 0 && <Pill tone="red">{drafts} still draft</Pill>}
                 {p.opens_at && <span>Opens {fmtDate(p.opens_at)}</span>}
                 {p.closes_at && <span>Closes {fmtDate(p.closes_at)}</span>}
                 {list.length > mcq.length && <span className="text-amber-700">{list.length - mcq.length} photo question(s) are ignored</span>}
@@ -188,7 +185,7 @@ export default function MockPapers() {
                               <div className="line-clamp-2 font-medium">{GENERIC_STEM.test(heading) ? `Photo: ${heading}` : heading}</div>
                               <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-stone-500">
                                 {q.question_type !== 'mcq' && <Pill tone="amber">Photo (ignored)</Pill>}
-                                {!q.is_published && <Pill tone="red">Draft</Pill>}
+                                {!q.is_published && <Pill>Unpublished</Pill>}
                                 {subjectName(q.subject_id) && <Pill>{subjectName(q.subject_id)}</Pill>}
                                 <span className="truncate">{pathOf(sec.nodes, q.section_id)}</span>
                               </div>
