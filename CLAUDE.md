@@ -108,6 +108,14 @@ clear purpose, a privacy notice, and ideally the student opting in. (Note: the
 `attempts` RLS policy lets admins read individual rows — the app itself shouldn't
 surface them.)
 
+## "Published" vs "Not live" — what it means here
+
+There is **no review stage**: every question is ready the moment it is written. `questions.is_published` is purely a
+**visibility switch** — shown in the UI as **Live** / **Not live**. Leads keep finished questions Not live until they want
+students to see them (e.g. after a teaching session), and a *locked* or hidden section hides everything in it regardless.
+Don't build "needs review" features on top of Not live (the ~850 unpublished questions are ready, just held back).
+Student-teachers' questions arrive Not live because the database only lets them insert unpublished rows; a lead makes them live.
+
 ## Where things live (so Claude can be asked to check them)
 
 - Frontend pages: `src/pages/` (student-facing) and `src/pages/admin/`

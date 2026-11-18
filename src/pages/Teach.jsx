@@ -39,7 +39,7 @@ export default function Teach() {
   useEffect(() => { load() }, [])
 
   async function remove(q) {
-    const ok = await askConfirm('Delete this draft? This cannot be undone.')
+    const ok = await askConfirm('Delete this question? This cannot be undone.')
     if (!ok) return
     const { error } = await supabase.from('questions').delete().eq('id', q.id)
     if (error) return setError(error.message)
@@ -63,7 +63,7 @@ export default function Teach() {
           </>
         }
       >
-        Write questions for the bank and build teaching slides from them. You only see your own questions here. New questions stay as drafts until an academic lead publishes them.
+        Write questions for the bank and build teaching slides from them. You only see your own questions here. New questions stay hidden from students until an academic lead makes them live.
       </PageHeader>
       <Notice tone="error" onClose={() => setError('')}>{error}</Notice>
       {rows && !all.length && <Empty>You haven't written any questions yet.</Empty>}
@@ -80,7 +80,7 @@ export default function Teach() {
             <div className="min-w-0 flex-1">
               <p className="line-clamp-2 text-sm font-medium">{q.stem}</p>
               <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-stone-500">
-                <Pill tone={q.is_published ? 'green' : 'amber'}>{q.is_published ? 'Live' : 'Draft'}</Pill>
+                <Pill tone={q.is_published ? 'green' : 'amber'}>{q.is_published ? 'Live' : 'Not live'}</Pill>
                 <Pill>{q.question_type === 'station' ? 'Photo' : 'MCQ'}</Pill>
                 {sub.rows.find((s) => s.id === q.subject_id)?.name && <Pill>{sub.rows.find((s) => s.id === q.subject_id).name}</Pill>}
                 <span className="truncate">{pathOf(sec.nodes, q.section_id)}</span>

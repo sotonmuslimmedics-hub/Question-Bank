@@ -357,7 +357,7 @@ export default function QuestionEditor({ initial, sections, subjects, canPublish
           </label>
         )}
       </div>
-      {!canPublish && <p className="text-xs text-stone-500">Your questions are saved as drafts. An academic lead reviews them before they go live.</p>}
+      {!canPublish && <p className="text-xs text-stone-500">Your question is saved but not shown to students yet. An academic lead makes it live when it should appear.</p>}
 
       <div className="flex gap-2">
         <button className={btnDark} disabled={busy}>{busy ? 'Saving…' : 'Save question'}</button>

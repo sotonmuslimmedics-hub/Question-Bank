@@ -97,7 +97,7 @@ export default function ManageQuestions() {
       if (f.section && sec.nodes.get(f.section)) query = query.in('section_id', descendantIds(sec.nodes.get(f.section)))
       if (f.subject) query = query.eq('subject_id', f.subject)
       if (f.status === 'published') query = query.eq('is_published', true)
-      if (f.status === 'draft') query = query.eq('is_published', false)
+      if (f.status === 'hidden') query = query.eq('is_published', false)
       if (f.type !== 'all') query = query.eq('question_type', f.type)
       if (f.examTag) query = query.eq('exam_tag', f.examTag)
       if (f.paper === 'in') query = query.eq('mock_hold', true)
@@ -150,7 +150,7 @@ export default function ManageQuestions() {
   return (
     <div className="pb-28">
       <PageHeader title="Questions" actions={<button className={btnDark} onClick={() => setEditing({})}>New question</button>}>
-        Review student-teacher drafts, publish, move or delete questions, and build slides. Tick any set of questions — even ones scattered across different sections — and use "Tag for mock…" to label them, so you can filter back to that exact set later (e.g. to publish them after the exam) without reselecting each one.
+        Make questions live or hold them back, move or delete them, and build slides. "Live" means students can see a question (unless its module is locked); "Not live" means it is ready but held back. Tick any set of questions — even ones scattered across different sections — and use "Tag for mock…" to label them, so you can filter back to that exact set later (e.g. to publish them after the exam) without reselecting each one.
       </PageHeader>
       <Notice tone={msg.tone} onClose={() => setMsg({ text: '' })}>{msg.text}</Notice>
 
@@ -165,7 +165,7 @@ export default function ManageQuestions() {
         </select>
         <select className={inputCls} value={f.status} onChange={(e) => setF({ ...f, status: e.target.value })}>
           <option value="all">Any status</option>
-          <option value="draft">Drafts (review queue)</option>
+          <option value="hidden">Not live (held back)</option>
           <option value="published">Published</option>
         </select>
         <select className={inputCls} value={f.type} onChange={(e) => setF({ ...f, type: e.target.value })}>
@@ -223,7 +223,7 @@ export default function ManageQuestions() {
                 </span>
               )}
               <span className="mt-1 flex flex-wrap items-center gap-2 text-xs text-stone-500">
-                <Pill tone={q.is_published ? 'green' : 'amber'}>{q.is_published ? 'Live' : 'Draft'}</Pill>
+                <Pill tone={q.is_published ? 'green' : 'amber'}>{q.is_published ? 'Live' : 'Not live'}</Pill>
                 <Pill>{q.question_type === 'station' ? 'Photo' : 'MCQ'}</Pill>
                 {subjectName(q.subject_id) && <Pill>{subjectName(q.subject_id)}</Pill>}
                 {q.mock_hold && <Pill tone="brand">In mock paper</Pill>}
@@ -246,7 +246,7 @@ export default function ManageQuestions() {
           <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-2">
             <b className="mr-1 text-sm">{picked.size} selected</b>
             <button className={btnGhost} onClick={() => bulk({ is_published: true }, 'Published')}>Publish</button>
-            <button className={btnGhost} onClick={() => bulk({ is_published: false }, 'Moved back to drafts')}>Unpublish</button>
+            <button className={btnGhost} onClick={() => bulk({ is_published: false }, 'Hidden from students (not live)')}>Unpublish</button>
             <button className={btnGhost} onClick={() => setMoveTo('')}>Move…</button>
             <button className={btnGhost} onClick={tagSelected}>Tag for mock…</button>
             <button className={btnGhost} onClick={() => setAddToPaper(true)}>Add to paper…</button>

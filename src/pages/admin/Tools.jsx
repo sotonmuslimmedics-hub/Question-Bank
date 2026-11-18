@@ -134,7 +134,7 @@ function Importer({ kind, sec }) {
         }
       }
       setMsg({
-        text: `Imported ${added} question${added === 1 ? '' : 's'}${skipped ? `, skipped ${skipped} already in the bank` : ''}${created ? `, created ${created} new section${created === 1 ? '' : 's'} (locked)` : ''}.${isMcq && !publish ? ' They are drafts: review and publish in Questions.' : ''}${!isMcq ? ' Open each one in Questions to paste in its photo, then publish.' : ''}`,
+        text: `Imported ${added} question${added === 1 ? '' : 's'}${skipped ? `, skipped ${skipped} already in the bank` : ''}${created ? `, created ${created} new section${created === 1 ? '' : 's'} (locked)` : ''}.${isMcq && !publish ? ' They are not live yet: make them live in Questions when students should see them.' : ''}${!isMcq ? ' Open each one in Questions to paste in its photo, then publish.' : ''}`,
         tone: 'ok',
       })
       setParsed(null)
@@ -174,7 +174,7 @@ function Importer({ kind, sec }) {
           )}
           {isMcq && (
             <label className="mt-2 flex items-center gap-2">
-              <input type="checkbox" checked={publish} onChange={(e) => setPublish(e.target.checked)} /> Publish straight away (otherwise they arrive as drafts)
+              <input type="checkbox" checked={publish} onChange={(e) => setPublish(e.target.checked)} /> Publish straight away (otherwise they arrive not live)
             </label>
           )}
           <button className={`${btnDark} mt-3`} disabled={busy || !parsed.rows.length} onClick={run}>{busy ? 'Importing…' : 'Import'}</button>
