@@ -61,9 +61,13 @@ broken, or hidden but actually allowed.
   accepted answers; plain substring match; runs as the caller so RLS applies; returns at most 150 ids — keep
   `SEARCH_CAP` in `ManageQuestions.jsx` in step with the `limit 150` inside the function). It exists because PostgREST
   can't OR a condition on a question with one on its child `question_parts` rows.
-- **Timed mock exams (database built, screens not yet).** Tables `mock_papers`, `mock_paper_questions`,
-  `mock_attempts`, `mock_answers`; MCQ only; retakes allowed (one sitting in progress at a time); an open window
-  per paper (`status` draft/live/closed plus optional `opens_at`/`closes_at`). Rules to keep:
+- **Timed mock exams.** Tables `mock_papers`, `mock_paper_questions`, `mock_attempts`, `mock_answers`; MCQ only;
+  retakes allowed (one sitting in progress at a time); an open window per paper (`status` draft/live/closed plus
+  optional `opens_at`/`closes_at`). Screens: students `Mocks.jsx` (list) → `MockExam.jsx` (timer, autosave, flags,
+  submit) → `MockResults.jsx` (score, subjects, cohort percentile, review); leads `admin/MockPapers.jsx` (create,
+  order, set live, close, release, preview) plus "Add to paper…" on the Questions page
+  (`components/AddToPaperDialog.jsx`). A paper can only go live when all its questions are published. Not built yet:
+  per-paper stats for leads, copying mock answers into Missed mode, payment (see hook below). Rules to keep:
   - **Held questions.** A question in any unreleased paper has `questions.mock_hold = true` (kept in step by
     triggers) and the `questions read by section` policy hides it from students — Practise/Quiz never see it. Leads
     still see everything. `mock_release(paper)` closes a paper and frees its questions. Don't `select` held

@@ -8,6 +8,10 @@ import Home from './pages/Home'
 import Practice from './pages/Practice'
 import Quiz from './pages/Quiz'
 import Announcements from './pages/Announcements'
+import Mocks from './pages/Mocks'
+import MockExam from './pages/MockExam'
+import MockResults from './pages/MockResults'
+import MockPapers from './pages/admin/MockPapers'
 import Teach from './pages/Teach'
 import Portfolio from './pages/Portfolio'
 import ManageQuestions from './pages/admin/ManageQuestions'
@@ -37,6 +41,9 @@ export default function App() {
         <Route index element={<Home />} />
         <Route path="practice" element={<Practice />} />
         <Route path="quiz" element={<Quiz />} />
+        <Route path="mocks" element={<Mocks />} />
+        <Route path="mocks/:attemptId" element={<MockExam />} />
+        <Route path="mocks/:attemptId/results" element={<MockResults />} />
         <Route path="announcements" element={<Announcements />} />
         <Route path="teach" element={<Gate min="teacher"><Teach /></Gate>} />
         <Route path="portfolio" element={<Gate min="teacher"><Portfolio /></Gate>} />
@@ -44,6 +51,7 @@ export default function App() {
         <Route path="manage/teaching" element={<Gate min="lead"><Teaching /></Gate>} />
         <Route path="manage/structure" element={<Gate min="lead"><Structure /></Gate>} />
         <Route path="manage/subjects" element={<Gate min="lead"><Subjects /></Gate>} />
+        <Route path="manage/papers" element={<Gate min="lead"><MockPapers /></Gate>} />
         <Route path="manage/insights" element={<Gate min="lead"><Insights /></Gate>} />
         <Route path="manage/people" element={<Gate min="admin"><People /></Gate>} />
         <Route path="manage/tools" element={<Gate min="admin"><Tools /></Gate>} />

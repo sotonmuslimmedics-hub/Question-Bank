@@ -6,6 +6,7 @@ import { descendantIds, pathOf } from '../../lib/sections'
 import { deleteImage } from '../../lib/images'
 import QuestionEditor from '../../components/QuestionEditor'
 import SlideDialog from '../../components/SlideDialog'
+import AddToPaperDialog from '../../components/AddToPaperDialog'
 import { PageHeader, Notice, Empty, Pill, Modal, inputCls, btnDark, btnGhost, btnDanger, useConfirm, usePrompt } from '../../components/ui'
 
 const PAGE = 40
@@ -36,6 +37,7 @@ export default function ManageQuestions() {
   const [picked, setPicked] = useState(new Set())
   const [editing, setEditing] = useState(null)
   const [slides, setSlides] = useState(false)
+  const [addToPaper, setAddToPaper] = useState(false)
   const [moveTo, setMoveTo] = useState(null) // string | null
   const [capped, setCapped] = useState(false) // search matched more than SEARCH_CAP questions
 
@@ -239,6 +241,7 @@ export default function ManageQuestions() {
             <button className={btnGhost} onClick={() => bulk({ is_published: false }, 'Moved back to drafts')}>Unpublish</button>
             <button className={btnGhost} onClick={() => setMoveTo('')}>Move…</button>
             <button className={btnGhost} onClick={tagSelected}>Tag for mock…</button>
+            <button className={btnGhost} onClick={() => setAddToPaper(true)}>Add to paper…</button>
             <button className={btnGhost} onClick={() => setSlides(true)}>Slides</button>
             <button className={btnDanger} onClick={bulkDelete}>Delete</button>
             <button className={btnGhost} onClick={() => setPicked(new Set())}>Clear</button>
@@ -252,6 +255,13 @@ export default function ManageQuestions() {
         </Modal>
       )}
       {slides && <SlideDialog ids={ids} nodes={sec.nodes} onClose={() => setSlides(false)} />}
+      {addToPaper && (
+        <AddToPaperDialog
+          ids={ids}
+          onClose={() => setAddToPaper(false)}
+          onDone={(text) => { setAddToPaper(false); setMsg({ text, tone: 'ok' }); setPicked(new Set()); load(false, 0) }}
+        />
+      )}
       {confirmDialog}
       {tagDialog}
       {moveTo !== null && (

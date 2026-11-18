@@ -10,6 +10,7 @@ function useNav() {
   const items = [
     { to: '/', label: 'Home', icon: '⌂', end: true, primary: true },
     { to: '/practice', label: 'Practise', icon: '✎', primary: true },
+    { to: '/mocks', label: 'Mocks', icon: '⏱', primary: true },
     { to: '/announcements', label: 'News', icon: '✉', primary: true },
   ]
   if (isTeacher) {
@@ -21,6 +22,7 @@ function useNav() {
     items.push({ to: '/manage/teaching', label: 'Teaching sessions', icon: '☑', group: 'Manage' })
     items.push({ to: '/manage/structure', label: 'Structure', icon: '⌥', group: 'Manage' })
     items.push({ to: '/manage/subjects', label: 'Subjects', icon: '§', group: 'Manage' })
+    items.push({ to: '/manage/papers', label: 'Mock papers', icon: '▦', group: 'Manage' })
     items.push({ to: '/manage/insights', label: 'Insights', icon: '◔', group: 'Manage' })
   }
   if (isAdmin) {

@@ -64,9 +64,10 @@ export function Empty({ children }) {
 // event handling is involved.
 // Usage: const [confirmDialog, askConfirm] = useConfirm(); ... {confirmDialog}
 // then: if (!(await askConfirm('Delete this?'))) return
+// The button says "Delete" (red) unless you pass a different label: askConfirm('Release it?', 'Release')
 export function useConfirm() {
-  const [req, setReq] = useState(null) // { message, resolve }
-  const ask = useCallback((message) => new Promise((resolve) => setReq({ message, resolve })), [])
+  const [req, setReq] = useState(null) // { message, label, resolve }
+  const ask = useCallback((message, label) => new Promise((resolve) => setReq({ message, label, resolve })), [])
   if (!req) return [null, ask]
   const finish = (ok) => { req.resolve(ok); setReq(null) }
   const dialog = (
@@ -74,7 +75,7 @@ export function useConfirm() {
       <p className="text-sm text-stone-600">{req.message}</p>
       <div className="mt-4 flex justify-end gap-2">
         <button type="button" className={btnGhost} onClick={() => finish(false)}>Cancel</button>
-        <button type="button" className={btnDanger} onClick={() => finish(true)}>Delete</button>
+        <button type="button" className={req.label ? btnDark : btnDanger} onClick={() => finish(true)}>{req.label || 'Delete'}</button>
       </div>
     </Modal>
   )
